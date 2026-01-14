@@ -11,8 +11,11 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useRouter } from "next/navigation"
-import { provinciasArgentina, actividadesOptions, litrosVinoRango } from "@/lib/assessment-data"
+import { provinciasArgentina, departamentosData } from "@/lib/assessment/geo-data"
+import { actividadesOptions, litrosVinoRango } from "@/lib/assessment/options-data"
+
 import Link from "next/link"
+
 
 export default function RegistroPage() {
   const router = useRouter()
@@ -34,7 +37,9 @@ export default function RegistroPage() {
   const [vinedoInv, setVinedoInv] = useState("")
   const [provincia, setProvincia] = useState("")
   const [departamento, setDepartamento] = useState("")
+  const [codigoPostal, setCodigoPostal] = useState("")
   const [distrito, setDistrito] = useState("")
+  const [calleNumeracion, setCalleNumeracion] = useState("")
   const [actividades, setActividades] = useState<string[]>([])
   const [litrosVino, setLitrosVino] = useState("")
   const [password, setPassword] = useState("")
@@ -42,6 +47,11 @@ export default function RegistroPage() {
 
   const handleActivityToggle = (activity: string) => {
     setActividades((prev) => (prev.includes(activity) ? prev.filter((a) => a !== activity) : [...prev, activity]))
+  }
+
+  const handleProvinciaChange = (value: string) => {
+    setProvincia(value)
+    setDepartamento("")
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -75,7 +85,9 @@ export default function RegistroPage() {
             vinedo_inv: vinedoInv,
             provincia,
             departamento,
+            codigo_postal: codigoPostal,
             distrito,
+            calle_numeracion: calleNumeracion,
             actividades: JSON.stringify(actividades),
             litros_vino_rango: litrosVino,
           },
@@ -92,9 +104,15 @@ export default function RegistroPage() {
     }
   }
 
+  const departamentosDisponibles = provincia
+  ? departamentosData[provincia] || []
+  : []
+  
+
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
-      <Card className="w-full max-w-4xl">
+      <Card className="w-full max-w-4xl overflow-hidden p-0">
         <CardHeader className="bg-primary text-primary-foreground">
           <CardTitle className="text-3xl text-center">Registro COVIAR</CardTitle>
           <CardDescription className="text-primary-foreground/80 text-center">
@@ -141,7 +159,8 @@ export default function RegistroPage() {
               </div>
             </div>
 
-            {/* Winery Section */}
+            {/* Información bodega */}
+ 
             <div className="space-y-4">
               <h3 className="text-xl font-semibold border-b pb-2">Datos de la Bodega/Viñedo</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -179,9 +198,24 @@ export default function RegistroPage() {
                   <Input id="vinedo-inv" value={vinedoInv} onChange={(e) => setVinedoInv(e.target.value)} />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="litros-vino">Litros de Vino Elaborado</Label>
+                  <Select value={litrosVino} onValueChange={setLitrosVino}>
+                    <SelectTrigger id="litros-vino" className="h-10 w-full">
+                      <SelectValue placeholder="Selecciona un rango" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {litrosVinoRango.map((rango) => (
+                        <SelectItem key={rango} value={rango}>
+                          {rango}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="provincia">Provincia *</Label>
-                  <Select value={provincia} onValueChange={setProvincia} required>
-                    <SelectTrigger id="provincia">
+                  <Select value={provincia} onValueChange={handleProvinciaChange} required>
+                    <SelectTrigger id="provincia" className="h-10 w-full">
                       <SelectValue placeholder="Selecciona una provincia" />
                     </SelectTrigger>
                     <SelectContent>
@@ -194,33 +228,48 @@ export default function RegistroPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="departamento">Departamento</Label>
-                  <Input id="departamento" value={departamento} onChange={(e) => setDepartamento(e.target.value)} />
+                  <Label htmlFor="departamento">Departamento / Comuna / Partido *</Label>
+                  <Select
+                    value={departamento}
+                    onValueChange={setDepartamento}
+                    disabled={!provincia}
+                  >
+                    <SelectTrigger id="departamento" className="h-10 w-full">
+                      <SelectValue
+                        placeholder={
+                          provincia
+                            ? "Selecciona un departamento"
+                            : "Selecciona primero una provincia"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departamentosDisponibles.map((dep) => (
+                        <SelectItem key={dep} value={dep}>
+                          {dep}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="codigo-postal">Código Postal</Label>
+                  <Input id="codigo-postal" value={codigoPostal} onChange={(e) => setCodigoPostal(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="distrito">Distrito</Label>
                   <Input id="distrito" value={distrito} onChange={(e) => setDistrito(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="litros-vino">Litros de Vino Elaborado</Label>
-                  <Select value={litrosVino} onValueChange={setLitrosVino}>
-                    <SelectTrigger id="litros-vino">
-                      <SelectValue placeholder="Selecciona un rango" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {litrosVinoRango.map((rango) => (
-                        <SelectItem key={rango} value={rango}>
-                          {rango}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="calle-numeracion">Calle/Numeración</Label>
+                  <Input id="calle-numeracion" value={calleNumeracion} onChange={(e) => setCalleNumeracion(e.target.value)} />
                 </div>
               </div>
 
               <div className="space-y-3">
                 <Label>Actividades y Experiencias</Label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   {actividadesOptions.map((actividad) => (
                     <div key={actividad} className="flex items-center space-x-2">
                       <Checkbox
@@ -240,7 +289,7 @@ export default function RegistroPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-4 p-2">
                   <Label htmlFor="password">Contraseña *</Label>
                   <Input
                     id="password"
@@ -250,7 +299,7 @@ export default function RegistroPage() {
                     onChange={(e) => setPassword(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-4 p-2">
                   <Label htmlFor="confirm-password">Confirmar Contraseña *</Label>
                   <Input
                     id="confirm-password"
