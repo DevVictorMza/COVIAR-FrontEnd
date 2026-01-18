@@ -1,57 +1,18 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-// import { obtenerPerfil } from "@/lib/api/users" // TODO: Descomentar cuando la API esté lista
-import type { Usuario } from "@/lib/api/types"
+import { useUser } from "@/lib/hooks"
 
 export default function ConfiguracionPage() {
-  const [usuario, setUsuario] = useState<Usuario | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { usuario, isLoading } = useUser()
 
-  useEffect(() => {
-    async function cargarPerfil() {
-      try {
-        // Intentar obtener perfil desde localStorage primero
-        const usuarioStr = localStorage.getItem('usuario')
-        if (usuarioStr) {
-          const user = JSON.parse(usuarioStr) as Usuario
-          setUsuario(user)
-        }
-
-        // TODO: Cuando la API esté lista, descomentar esto:
-        // const perfil = await obtenerPerfil()
-        // setUsuario(perfil)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error al cargar el perfil')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    cargarPerfil()
-  }, [])
-
-  if (isLoading) {
+  if (isLoading || !usuario) {
     return (
       <div className="flex items-center justify-center h-full">
         <p>Cargando configuración...</p>
       </div>
     )
   }
-
-  if (error) {
-    return (
-      <div className="p-8">
-        <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-          {error}
-        </div>
-      </div>
-    )
-  }
-
-  if (!usuario) return null
 
   return (
     <div className="p-8 space-y-8">

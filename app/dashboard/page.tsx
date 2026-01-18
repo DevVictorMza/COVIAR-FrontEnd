@@ -1,28 +1,14 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { Usuario } from "@/lib/api/types"
+import { useUser } from "@/lib/hooks"
 
 export default function DashboardPage() {
-  const [usuario, setUsuario] = useState<Usuario | null>(null)
+  const { usuario, isLoading } = useUser()
 
-  useEffect(() => {
-    // Obtener usuario de localStorage
-    const usuarioStr = localStorage.getItem('usuario')
-    if (usuarioStr) {
-      try {
-        const user = JSON.parse(usuarioStr)
-        setUsuario(user)
-      } catch (error) {
-        console.error('Error al parsear usuario:', error)
-      }
-    }
-  }, [])
-
-  if (!usuario) {
+  if (isLoading || !usuario) {
     return (
       <div className="flex items-center justify-center h-full">
         <p>Cargando...</p>

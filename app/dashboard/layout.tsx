@@ -2,8 +2,9 @@
 
 import type React from "react"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { DashboardSidebar } from "@/components/dashboard-sidebar"
+import { useAuth } from "@/lib/hooks"
 
 export default function DashboardLayout({
   children,
@@ -11,41 +12,14 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const router = useRouter()
-  const [isLoading, setIsLoading] = useState(true)
+  const { isAuthenticated, isLoading } = useAuth()
 
   useEffect(() => {
-    // Verificar si hay usuario en localStorage
-    const usuarioStr = localStorage.getItem('usuario')
-
-    if (!usuarioStr) {
-      // No hay usuario, redirigir a login
-      console.log('No hay usuario en localStorage, redirigiendo a login')
-      router.push("/login")
-      return
-    }
-
-    try {
-      const usuario = JSON.parse(usuarioStr)
-      console.log('Usuario encontrado en localStorage:', usuario)
-
-      // Verificar que el objeto tiene las propiedades necesarias
-      // Ser más flexible: aceptar si tiene email (campo obligatorio)
-      if (!usuario || !usuario.email) {
-        console.log('Usuario inválido (sin email), limpiando localStorage')
-        localStorage.removeItem('usuario')
-        router.push("/login")
-        return
-      }
-
-      console.log('Usuario válido, permitiendo acceso al dashboard')
-      setIsLoading(false)
-    } catch (error) {
-      // Error al parsear, limpiar y redirigir
-      console.error('Error al parsear usuario de localStorage:', error)
-      localStorage.removeItem('usuario')
+    if (!isLoading && !isAuthenticated) {
+      console.log('Usuario no autenticado, redirigiendo a /login')
       router.push("/login")
     }
-  }, [router])
+  }, [isAuthenticated, isLoading, router])
 
   // Mostrar loading mientras verifica
   if (isLoading) {
@@ -57,6 +31,11 @@ export default function DashboardLayout({
         </div>
       </div>
     )
+  }
+
+  // Si no está autenticado, no renderizar nada (ya está redirigiendo)
+  if (!isAuthenticated) {
+    return null
   }
 
   return (

@@ -9,6 +9,7 @@ import { assessmentData } from "@/lib/assessment/assessment-data"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ChevronRight, Check } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useUser } from "@/lib/hooks"
 
 
 type Chapter = (typeof assessmentData.chapters)[0]
@@ -16,6 +17,7 @@ type Indicator = Chapter["indicators"][0]
 
 export default function AutoevaluacionPage() {
   const router = useRouter()
+  const { usuario, isLoading } = useUser()
   const [userId, setUserId] = useState<string | null>(null)
   const [assessmentId, setAssessmentId] = useState<string | null>(null)
   const [currentChapter, setCurrentChapter] = useState<Chapter | null>(null)
@@ -27,30 +29,30 @@ export default function AutoevaluacionPage() {
   const [isFinalizng, setIsFinalizing] = useState(false)
 
   useEffect(() => {
-  // Obtener usuario de localStorage
-  const usuarioStr = localStorage.getItem('usuario')
-  
-  if (!usuarioStr) {
-    router.push("/login")
-    return
-  }
-  
-  try {
-    const usuario = JSON.parse(usuarioStr)
-    setUserId(usuario.idUsuario.toString())
-    
-    // Inicializar primer capítulo
-    if (assessmentData.chapters.length > 0) {
-      setCurrentChapter(assessmentData.chapters[0])
-      if (assessmentData.chapters[0].indicators.length > 0) {
-        setCurrentIndicator(assessmentData.chapters[0].indicators[0])
-      }
+    // Esperar a que el hook cargue el usuario desde localStorage
+    if (isLoading) return
+
+    // Si ya se cargó y no hay usuario, redirigir al login
+    if (!usuario) {
+      router.push("/login")
+      return
     }
+
+    try {
+      setUserId(usuario.idUsuario.toString())
+
+      // Inicializar primer capítulo
+      if (assessmentData.chapters.length > 0) {
+        setCurrentChapter(assessmentData.chapters[0])
+        if (assessmentData.chapters[0].indicators.length > 0) {
+          setCurrentIndicator(assessmentData.chapters[0].indicators[0])
+        }
+      }
     } catch (error) {
-      console.error('Error al obtener usuario:', error)
+      console.error('Error al inicializar evaluación:', error)
       router.push("/login")
     }
-  }, [router])
+  }, [usuario, isLoading, router])
 
   useEffect(() => {
     const totalIndicators = assessmentData.chapters.reduce((acc, ch) => acc + ch.indicators.length, 0)
