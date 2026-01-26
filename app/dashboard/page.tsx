@@ -4,13 +4,44 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { Usuario } from "@/lib/api/types"
+
+// Interfaz que coincide con la respuesta del backend
+interface UsuarioData {
+  cuenta: {
+    id: number
+    email: string
+    tipo_cuenta: string
+  }
+  bodega: {
+    id: number
+    razon_social: string
+    nombre_fantasia: string
+    cuit: string
+    calle: string
+    numeracion: string
+    telefono: string
+    email_institucional: string
+    localidad: {
+      id: number
+      nombre: string
+      departamento: string
+      provincia: string
+    }
+  }
+  responsable: {
+    id: number
+    nombre: string
+    apellido: string
+    cargo: string
+    dni: string
+    activo: boolean
+  }
+}
 
 export default function DashboardPage() {
-  const [usuario, setUsuario] = useState<Usuario | null>(null)
+  const [usuario, setUsuario] = useState<UsuarioData | null>(null)
 
   useEffect(() => {
-    // Obtener usuario de localStorage
     const usuarioStr = localStorage.getItem('usuario')
     if (usuarioStr) {
       try {
@@ -35,57 +66,12 @@ export default function DashboardPage() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold">
-          Bienvenido, {usuario.nombre} {usuario.apellido}
+          Bienvenido, {usuario.responsable?.nombre} {usuario.responsable?.apellido}
         </h1>
-        <p className="text-muted-foreground">Panel de control de sostenibilidad enoturística COVIAR</p>
+        <p className="text-muted-foreground">
+          {usuario.bodega?.nombre_fantasia} — Panel de control de sostenibilidad enoturística COVIAR
+        </p>
       </div>
-
-      {/* Información del Usuario */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Información de la Cuenta</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Nombre Completo</p>
-              <p className="text-lg font-medium">{usuario.nombre} {usuario.apellido}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Email</p>
-              <p className="text-lg font-medium">{usuario.email}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Rol</p>
-              <p className="text-lg font-medium capitalize">{usuario.rol}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Estado</p>
-              <p className="text-lg font-medium">
-                {usuario.activo ? (
-                  <span className="text-green-600">✓ Activo</span>
-                ) : (
-                  <span className="text-red-600">✗ Inactivo</span>
-                )}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Fecha de Registro</p>
-              <p className="text-lg font-medium">
-                {new Date(usuario.fecha_registro).toLocaleDateString('es-AR')}
-              </p>
-            </div>
-            {usuario.ultimo_acceso && (
-              <div>
-                <p className="text-sm text-muted-foreground">Último Acceso</p>
-                <p className="text-lg font-medium">
-                  {new Date(usuario.ultimo_acceso).toLocaleDateString('es-AR')}
-                </p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Tarjetas de Acceso Rápido */}
       <div className="grid gap-6 md:grid-cols-3">

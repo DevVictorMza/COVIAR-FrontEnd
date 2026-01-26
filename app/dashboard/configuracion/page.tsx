@@ -2,27 +2,53 @@
 
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-// import { obtenerPerfil } from "@/lib/api/users" // TODO: Descomentar cuando la API esté lista
-import type { Usuario } from "@/lib/api/types"
+
+// Interfaz que coincide con la respuesta del backend
+interface UsuarioData {
+  cuenta: {
+    id: number
+    email: string
+    tipo_cuenta: string
+  }
+  bodega: {
+    id: number
+    razon_social: string
+    nombre_fantasia: string
+    cuit: string
+    calle: string
+    numeracion: string
+    telefono: string
+    email_institucional: string
+    localidad: {
+      id: number
+      nombre: string
+      departamento: string
+      provincia: string
+    }
+  }
+  responsable: {
+    id: number
+    nombre: string
+    apellido: string
+    cargo: string
+    dni: string
+    activo: boolean
+  }
+}
 
 export default function ConfiguracionPage() {
-  const [usuario, setUsuario] = useState<Usuario | null>(null)
+  const [usuario, setUsuario] = useState<UsuarioData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function cargarPerfil() {
       try {
-        // Intentar obtener perfil desde localStorage primero
         const usuarioStr = localStorage.getItem('usuario')
         if (usuarioStr) {
-          const user = JSON.parse(usuarioStr) as Usuario
+          const user = JSON.parse(usuarioStr) as UsuarioData
           setUsuario(user)
         }
-
-        // TODO: Cuando la API esté lista, descomentar esto:
-        // const perfil = await obtenerPerfil()
-        // setUsuario(perfil)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error al cargar el perfil')
       } finally {
@@ -60,32 +86,31 @@ export default function ConfiguracionPage() {
         <p className="text-muted-foreground">Administra tu cuenta y preferencias</p>
       </div>
 
+      {/* Información de la Cuenta */}
       <Card>
         <CardHeader>
-          <CardTitle>Información del Usuario</CardTitle>
-          <CardDescription>Datos de tu cuenta</CardDescription>
+          <CardTitle>Información de la Cuenta</CardTitle>
+          <CardDescription>Datos de acceso a la plataforma</CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <p className="text-sm text-muted-foreground">Nombre</p>
-            <p className="font-medium">{usuario.nombre}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Apellido</p>
-            <p className="font-medium">{usuario.apellido}</p>
+            <p className="text-sm text-muted-foreground">Nombre Completo</p>
+            <p className="font-medium">
+              {usuario.responsable?.nombre} {usuario.responsable?.apellido}
+            </p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Email</p>
-            <p className="font-medium">{usuario.email}</p>
+            <p className="font-medium">{usuario.cuenta?.email}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Rol</p>
-            <p className="font-medium capitalize">{usuario.rol}</p>
+            <p className="font-medium capitalize">{usuario.responsable?.cargo}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Estado</p>
             <p className="font-medium">
-              {usuario.activo ? (
+              {usuario.responsable?.activo ? (
                 <span className="text-green-600">✓ Activo</span>
               ) : (
                 <span className="text-red-600">✗ Inactivo</span>
@@ -93,30 +118,55 @@ export default function ConfiguracionPage() {
             </p>
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Fecha de Registro</p>
-            <p className="font-medium">
-              {new Date(usuario.fecha_registro).toLocaleDateString('es-AR')}
-            </p>
+            <p className="text-sm text-muted-foreground">Tipo de Cuenta</p>
+            <p className="font-medium capitalize">{usuario.cuenta?.tipo_cuenta?.toLowerCase()}</p>
           </div>
-          {usuario.ultimo_acceso && (
-            <div>
-              <p className="text-sm text-muted-foreground">Último Acceso</p>
-              <p className="font-medium">
-                {new Date(usuario.ultimo_acceso).toLocaleDateString('es-AR')}
-              </p>
-            </div>
-          )}
+          <div>
+            <p className="text-sm text-muted-foreground">DNI</p>
+            <p className="font-medium">{usuario.responsable?.dni}</p>
+          </div>
         </CardContent>
       </Card>
 
+      {/* Información de la Bodega */}
       <Card>
         <CardHeader>
-          <CardTitle>Nota</CardTitle>
+          <CardTitle>Información de la Bodega</CardTitle>
+          <CardDescription>Datos de la bodega asociada</CardDescription>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Las funciones de edición de perfil estarán disponibles una vez que la API esté completamente implementada.
-          </p>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <p className="text-sm text-muted-foreground">Nombre Fantasía</p>
+            <p className="font-medium">{usuario.bodega?.nombre_fantasia}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Razón Social</p>
+            <p className="font-medium">{usuario.bodega?.razon_social}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">CUIT</p>
+            <p className="font-medium">{usuario.bodega?.cuit}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Teléfono</p>
+            <p className="font-medium">{usuario.bodega?.telefono}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Email Institucional</p>
+            <p className="font-medium">{usuario.bodega?.email_institucional}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Dirección</p>
+            <p className="font-medium">
+              {usuario.bodega?.calle} {usuario.bodega?.numeracion}
+            </p>
+          </div>
+          <div className="md:col-span-2">
+            <p className="text-sm text-muted-foreground">Ubicación</p>
+            <p className="font-medium">
+              {usuario.bodega?.localidad?.nombre}, {usuario.bodega?.localidad?.departamento}, {usuario.bodega?.localidad?.provincia}
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>

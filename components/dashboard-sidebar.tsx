@@ -1,10 +1,43 @@
 "use client"
 
-import { Home, ClipboardList, History, Settings, LogOut } from "lucide-react"
+import { Home, ClipboardList, History, Settings, LogOut, User } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+
+interface Usuario {
+  cuenta: {
+    id: number
+    email: string
+    tipo_cuenta: string
+  }
+  bodega: {
+    id: number
+    razon_social: string
+    nombre_fantasia: string
+    cuit: string
+    calle: string
+    numeracion: string
+    telefono: string
+    email_institucional: string
+    localidad: {
+      id: number
+      nombre: string
+      departamento: string
+      provincia: string
+    }
+  }
+  responsable: {
+    id: number
+    nombre: string
+    apellido: string
+    cargo: string
+    dni: string
+    activo: boolean
+  }
+}
 
 const navigation = [
   { name: "Inicio", href: "/dashboard", icon: Home },
@@ -17,21 +50,69 @@ const bottomNavigation = [{ name: "Configuración", href: "/dashboard/configurac
 export function DashboardSidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const [usuario, setUsuario] = useState<Usuario | null>(null)
 
-  const handleLogout = () => {
-    // Limpiar localStorage
-    localStorage.removeItem('usuario')
-    
-    // Redirigir a login
-    router.push("/login")
+  useEffect(() => {
+    const usuarioStr = localStorage.getItem('usuario')
+    if (usuarioStr) {
+      try {
+        const parsedUsuario = JSON.parse(usuarioStr)
+        setUsuario(parsedUsuario)
+      } catch (error) {
+        console.error('Error al parsear usuario:', error)
+      }
+    }
+  }, [])
+
+  const handleLogout = async () => {
+    // Importar dinámicamente para evitar problemas de SSR
+    const { logoutUsuario } = await import('@/lib/api/auth')
+    await logoutUsuario()
+
+    // Redirigir a página de despedida
+    router.push("/logout")
+  }
+
+  // Obtener iniciales del responsable
+  const getInitials = () => {
+    if (!usuario?.responsable) return "U"
+    const nombre = usuario.responsable.nombre?.[0] || ""
+    const apellido = usuario.responsable.apellido?.[0] || ""
+    return (nombre + apellido).toUpperCase() || "U"
   }
 
   return (
     <div className="flex h-full w-64 flex-col bg-sidebar border-r border-sidebar-border">
+      {/* Header con logo */}
       <div className="flex h-16 items-center justify-center border-b border-sidebar-border bg-primary">
         <h1 className="text-xl font-bold text-primary-foreground">COVIAR</h1>
       </div>
 
+      {/* Sección de usuario */}
+      {usuario && (
+        <div className="border-b border-sidebar-border p-4">
+          <div className="flex items-center gap-3">
+            {/* Avatar con iniciales */}
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold text-sm">
+              {getInitials()}
+            </div>
+            {/* Info del usuario */}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-sidebar-foreground truncate">
+                {usuario.responsable?.nombre} {usuario.responsable?.apellido}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {usuario.responsable?.cargo}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {usuario.bodega?.nombre_fantasia}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Navegación principal */}
       <nav className="flex-1 space-y-1 p-4">
         {navigation.map((item) => {
           const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`)
@@ -53,6 +134,7 @@ export function DashboardSidebar() {
         })}
       </nav>
 
+      {/* Navegación inferior */}
       <div className="border-t border-sidebar-border p-4 space-y-1">
         {bottomNavigation.map((item) => {
           const isActive = pathname === item.href

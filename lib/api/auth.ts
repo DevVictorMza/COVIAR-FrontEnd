@@ -107,18 +107,25 @@ export async function loginUsuario(data: LoginRequest): Promise<Usuario> {
 
 /**
  * Cierra la sesión del usuario actual
+ * Llama al endpoint de logout del backend y limpia los datos locales
  */
 export async function logoutUsuario(): Promise<void> {
-  // Limpiar datos de localStorage
-  localStorage.removeItem('usuario')
-  localStorage.removeItem('token')
-
-  // TODO: Cuando la API tenga endpoint de logout, llamarlo aquí
-  // try {
-  //   await api.post('/api/usuarios/logout', {}, { requiresAuth: true })
-  // } catch (error) {
-  //   console.error('Error al hacer logout en el servidor:', error)
-  // }
+  try {
+    // Llamar al endpoint de logout del backend
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+    console.log('Logout exitoso en el backend')
+  } catch (error) {
+    console.error('Error al hacer logout en el servidor:', error)
+  } finally {
+    // Siempre limpiar datos de localStorage, incluso si falla el backend
+    localStorage.removeItem('usuario')
+    localStorage.removeItem('token')
+  }
 }
 
 /**

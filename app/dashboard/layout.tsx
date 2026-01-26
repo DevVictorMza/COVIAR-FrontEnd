@@ -29,9 +29,9 @@ export default function DashboardLayout({
       console.log('Usuario encontrado en localStorage:', usuario)
 
       // Verificar que el objeto tiene las propiedades necesarias
-      // Ser más flexible: aceptar si tiene email (campo obligatorio)
-      if (!usuario || !usuario.email) {
-        console.log('Usuario inválido (sin email), limpiando localStorage')
+      // El email está dentro de usuario.cuenta.email
+      if (!usuario || !usuario.cuenta?.email) {
+        console.log('Usuario inválido (sin cuenta.email), limpiando localStorage')
         localStorage.removeItem('usuario')
         router.push("/login")
         return

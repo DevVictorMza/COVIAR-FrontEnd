@@ -27,25 +27,25 @@ export default function AutoevaluacionPage() {
   const [isFinalizng, setIsFinalizing] = useState(false)
 
   useEffect(() => {
-  // Obtener usuario de localStorage
-  const usuarioStr = localStorage.getItem('usuario')
-  
-  if (!usuarioStr) {
-    router.push("/login")
-    return
-  }
-  
-  try {
-    const usuario = JSON.parse(usuarioStr)
-    setUserId(usuario.idUsuario.toString())
-    
-    // Inicializar primer capítulo
-    if (assessmentData.chapters.length > 0) {
-      setCurrentChapter(assessmentData.chapters[0])
-      if (assessmentData.chapters[0].indicators.length > 0) {
-        setCurrentIndicator(assessmentData.chapters[0].indicators[0])
-      }
+    // Obtener usuario de localStorage
+    const usuarioStr = localStorage.getItem('usuario')
+
+    if (!usuarioStr) {
+      router.push("/login")
+      return
     }
+
+    try {
+      const usuario = JSON.parse(usuarioStr)
+      setUserId(usuario.idUsuario.toString())
+
+      // Inicializar primer capítulo
+      if (assessmentData.chapters.length > 0) {
+        setCurrentChapter(assessmentData.chapters[0])
+        if (assessmentData.chapters[0].indicators.length > 0) {
+          setCurrentIndicator(assessmentData.chapters[0].indicators[0])
+        }
+      }
     } catch (error) {
       console.error('Error al obtener usuario:', error)
       router.push("/login")
@@ -66,37 +66,37 @@ export default function AutoevaluacionPage() {
   }
 
   const handleSaveResponse = async () => {
-      if (!currentChapter || !currentIndicator || selectedLevel === null) {
-        return
-      }
-
-      setIsSaving(true)
-    
-      // TODO: Conectar con backend Go para guardar respuestas
-      console.log('Guardando respuesta:', {
-        userId,
-        indicator: currentIndicator,
-        level: selectedLevel
-      })
-      
-      // Guardar respuesta localmente por ahora
-      const key = `${currentChapter.number}-${currentIndicator.number}`
-      setResponses(prev => ({
-        ...prev,
-        [key]: selectedLevel
-      }))
-      
-      setIsSaving(false)
+    if (!currentChapter || !currentIndicator || selectedLevel === null) {
+      return
     }
 
-    const handleFinalizeAssessment = async () => {
-      setIsFinalizing(true)
-    
+    setIsSaving(true)
+
+    // TODO: Conectar con backend Go para guardar respuestas
+    console.log('Guardando respuesta:', {
+      userId,
+      indicator: currentIndicator,
+      level: selectedLevel
+    })
+
+    // Guardar respuesta localmente por ahora
+    const key = `${currentChapter.number}-${currentIndicator.number}`
+    setResponses(prev => ({
+      ...prev,
+      [key]: selectedLevel
+    }))
+
+    setIsSaving(false)
+  }
+
+  const handleFinalizeAssessment = async () => {
+    setIsFinalizing(true)
+
     // TODO: Enviar evaluación completa al backend
     console.log('Finalizando evaluación:', responses)
-    
+
     alert('Evaluación guardada localmente. Próximamente se guardará en el servidor.')
-    
+
     setIsFinalizing(false)
     router.push('/dashboard')
   }
@@ -136,9 +136,8 @@ export default function AutoevaluacionPage() {
                       <button
                         key={indicator.number}
                         onClick={() => handleSelectIndicator(chapter, indicator)}
-                        className={`w-full text-left px-3 py-2 rounded-md text-sm flex items-center justify-between transition-colors ${
-                          isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-                        }`}
+                        className={`w-full text-left px-3 py-2 rounded-md text-sm flex items-center justify-between transition-colors ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                          }`}
                       >
                         <span className="flex items-center gap-2">
                           {isSaved && <Check className="w-4 h-4 text-primary" />}
@@ -175,11 +174,10 @@ export default function AutoevaluacionPage() {
                   <div
                     key={level.level}
                     onClick={() => setSelectedLevel(level.level)}
-                    className={`p-4 border rounded-lg transition-colors cursor-pointer ${
-                      selectedLevel === level.level
+                    className={`p-4 border rounded-lg transition-colors cursor-pointer ${selectedLevel === level.level
                         ? "bg-primary/10 border-primary ring-2 ring-primary"
                         : "bg-muted/30 hover:bg-muted/50 hover:border-primary/50"
-                    }`}
+                      }`}
                   >
                     <RadioGroupItem value={level.level.toString()} id={`level-${level.level}`} className="sr-only" />
                     <Label htmlFor={`level-${level.level}`} className="cursor-pointer block">
