@@ -31,7 +31,7 @@ export async function POST(
             headers['Authorization'] = authHeader
         }
 
-        const backendUrl = `${API_BASE_URL}/api/v1/autoevaluaciones/${id}/respuestas`
+        const backendUrl = `${API_BASE_URL}/api/autoevaluaciones/${id}/respuestas`
 
         const response = await fetch(backendUrl, {
             method: 'POST',

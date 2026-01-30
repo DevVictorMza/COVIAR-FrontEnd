@@ -26,10 +26,10 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      console.log('Iniciando login con:', { email: email.trim() })
+      console.log('Iniciando login con:', { email_login: email.trim() })
 
       const usuario = await loginUsuario({
-        email: email.trim(),
+        email_login: email.trim(),
         password: password.trim(),
       })
 

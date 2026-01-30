@@ -27,11 +27,22 @@ export default function DashboardLayout({
     try {
       const usuario = JSON.parse(usuarioStr)
       console.log('Usuario encontrado en localStorage:', usuario)
+      console.log('Estructura del usuario:', JSON.stringify(usuario, null, 2))
 
       // Verificar que el objeto tiene las propiedades necesarias
-      // El email está dentro de usuario.cuenta.email
-      if (!usuario || !usuario.cuenta?.email) {
-        console.log('Usuario inválido (sin cuenta.email), limpiando localStorage')
+      // Soportar multiples formatos de respuesta del backend
+      const hasValidStructure = usuario && (
+        usuario.cuenta?.email ||           // Formato: { cuenta: { email }, bodega, responsable }
+        usuario.email_login ||             // Formato: { id_cuenta, email_login, bodega }
+        usuario.email ||                    // Formato directo: { email, ... }
+        usuario.id_cuenta ||               // Formato con id_cuenta
+        usuario.id ||                       // Formato con id
+        usuario.idUsuario                   // Formato Usuario original
+      )
+
+      if (!hasValidStructure) {
+        console.log('Usuario inválido (sin estructura válida), limpiando localStorage')
+        console.log('Propiedades del usuario:', Object.keys(usuario))
         localStorage.removeItem('usuario')
         router.push("/login")
         return

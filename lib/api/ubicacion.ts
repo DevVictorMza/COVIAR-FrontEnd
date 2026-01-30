@@ -21,18 +21,15 @@ export interface Localidad {
     id_departamento?: number
 }
 
-// URL base de la API
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
-
 /**
- * Servicios de ubicación - Conectan con la API de ubicaciones
+ * Servicios de ubicación - Usan el proxy de Next.js para evitar CORS
  */
 
 /**
  * Obtiene todas las provincias de Argentina
  */
 export async function getProvincias(): Promise<Provincia[]> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/provincias`)
+    const response = await fetch('/api/provincias')
     if (!response.ok) {
         throw new Error('Error al obtener provincias')
     }
@@ -46,7 +43,7 @@ export async function getProvincias(): Promise<Provincia[]> {
  * @param idProvincia - ID de la provincia
  */
 export async function getDepartamentosPorProvincia(idProvincia: number): Promise<Departamento[]> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/departamentos?provincia=${idProvincia}`)
+    const response = await fetch(`/api/departamentos?provincia=${idProvincia}`)
     if (!response.ok) {
         throw new Error('Error al obtener departamentos')
     }
@@ -60,7 +57,7 @@ export async function getDepartamentosPorProvincia(idProvincia: number): Promise
  * @param idDepartamento - ID del departamento
  */
 export async function getLocalidadesPorDepartamento(idDepartamento: number): Promise<Localidad[]> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/localidades?departamento=${idDepartamento}`)
+    const response = await fetch(`/api/localidades?departamento=${idDepartamento}`)
     if (!response.ok) {
         throw new Error('Error al obtener localidades')
     }
@@ -68,3 +65,5 @@ export async function getLocalidadesPorDepartamento(idDepartamento: number): Pro
     // Ordenar alfabéticamente
     return data.sort((a: Localidad, b: Localidad) => a.nombre.localeCompare(b.nombre))
 }
+
+

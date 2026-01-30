@@ -6,10 +6,10 @@ export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
 
-        console.log('Proxy: Enviando registro a', `${API_BASE_URL}/api/v1/registro`)
+        console.log('Proxy: Enviando registro a', `${API_BASE_URL}/api/registro`)
         console.log('Proxy: Body:', JSON.stringify(body, null, 2))
 
-        const response = await fetch(`${API_BASE_URL}/api/v1/registro`, {
+        const response = await fetch(`${API_BASE_URL}/api/registro`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

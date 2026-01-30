@@ -31,7 +31,7 @@ export async function GET(
             headers['Authorization'] = authHeader
         }
 
-        const backendUrl = `${API_BASE_URL}/api/v1/autoevaluaciones/${id}/estructura`
+        const backendUrl = `${API_BASE_URL}/api/autoevaluaciones/${id}/estructura`
         console.log('Proxy Autoevaluacion: Llamando a', backendUrl)
 
         const response = await fetch(backendUrl, {

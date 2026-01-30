@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
             headers['Authorization'] = authHeader
         }
 
-        const response = await fetch(`${API_BASE_URL}/api/v1/autoevaluaciones`, {
+        const response = await fetch(`${API_BASE_URL}/api/autoevaluaciones`, {
             method: 'POST',
             headers,
             credentials: 'include',

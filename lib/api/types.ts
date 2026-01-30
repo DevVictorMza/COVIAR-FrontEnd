@@ -36,7 +36,7 @@ export interface Usuario {
 // ============= AUTENTICACIÓN =============
 
 export interface LoginRequest {
-  email: string
+  email_login: string
   password: string
 }
 
@@ -130,6 +130,7 @@ export interface Capitulo {
   id_version: number
   nombre: string
   descripcion?: string
+  orden: number
 }
 
 export interface Indicador {
@@ -137,6 +138,7 @@ export interface Indicador {
   id_capitulo: number
   nombre: string
   descripcion: string
+  orden: number
 }
 
 export interface NivelRespuesta {
@@ -150,7 +152,7 @@ export interface NivelRespuesta {
 export interface IndicadorEstructura {
   indicador: Indicador
   niveles_respuesta: NivelRespuesta[]
-  habilitado: boolean
+  habilitado?: boolean
 }
 
 export interface CapituloEstructura {

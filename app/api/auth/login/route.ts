@@ -6,9 +6,10 @@ export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
 
-        console.log('Proxy Login: Enviando login a', `${API_BASE_URL}/api/v1/auth/login`)
+        console.log('Proxy Login: Enviando login a', `${API_BASE_URL}/api/login`)
+        console.log('Proxy Login: Body:', JSON.stringify(body))
 
-        const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+        const response = await fetch(`${API_BASE_URL}/api/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

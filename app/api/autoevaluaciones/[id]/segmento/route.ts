@@ -27,7 +27,7 @@ export async function PUT(
             headers['Authorization'] = authHeader
         }
 
-        const backendUrl = `${API_BASE_URL}/api/v1/autoevaluaciones/${id}/segmento`
+        const backendUrl = `${API_BASE_URL}/api/autoevaluaciones/${id}/segmento`
 
         const response = await fetch(backendUrl, {
             method: 'PUT',

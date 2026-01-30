@@ -149,8 +149,10 @@ export async function guardarRespuesta(
         headers: getAuthHeaders(),
         credentials: 'include',
         body: JSON.stringify({
-            id_indicador: idIndicador,
-            id_nivel_respuesta: idNivelRespuesta
+            respuestas: [{
+                id_indicador: idIndicador,
+                id_nivel_respuesta: idNivelRespuesta
+            }]
         }),
     })
 

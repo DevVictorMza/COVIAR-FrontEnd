@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { ChevronRight, Check, Ban, AlertCircle } from "lucide-react"
+import { ChevronRight, Check, Ban, AlertCircle, Users, Settings, CheckCircle2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import {
+  crearAutoevaluacion,
   obtenerEstructuraAutoevaluacion,
   obtenerSegmentos,
   seleccionarSegmento,
@@ -16,11 +17,19 @@ import {
   completarAutoevaluacion
 } from "@/lib/api/autoevaluacion"
 import type { CapituloEstructura, IndicadorEstructura, Segmento } from "@/lib/api/types"
-import { Users, Settings } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 export default function AutoevaluacionPage() {
   const router = useRouter()
   const [assessmentId, setAssessmentId] = useState<string | null>(null)
+  const [idBodega, setIdBodega] = useState<number | null>(null)
 
   // Estado para la estructura de la API
   const [estructura, setEstructura] = useState<CapituloEstructura[]>([])
@@ -30,18 +39,17 @@ export default function AutoevaluacionPage() {
   // Estado para navegación
   const [currentCapitulo, setCurrentCapitulo] = useState<CapituloEstructura | null>(null)
   const [responses, setResponses] = useState<Record<string, number>>({})
-  // const [isSaving, setIsSaving] = useState(false)
   const [canFinalize, setCanFinalize] = useState(false)
   const [isFinalizing, setIsFinalizing] = useState(false)
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false)
 
   // Estado para segmentos
-  // Estado para segmentos - Empezamos seleccionando segmento por defecto
   const [isSelectingSegment, setIsSelectingSegment] = useState(true)
   const [segmentos, setSegmentos] = useState<Segmento[]>([])
   const [selectedSegment, setSelectedSegment] = useState<Segmento | null>(null)
   const [loadingSegmentos, setLoadingSegmentos] = useState(false)
 
-  // Obtener usuario y ID de autoevaluación
+  // Obtener usuario e id_bodega
   useEffect(() => {
     const usuarioStr = localStorage.getItem('usuario')
 
@@ -51,50 +59,55 @@ export default function AutoevaluacionPage() {
     }
 
     try {
-      JSON.parse(usuarioStr) // Validates that the user is logged in
+      const usuario = JSON.parse(usuarioStr)
+      const bodegaId = usuario.bodega?.id_bodega || usuario.id_bodega
 
-      // Obtener el ID de autoevaluación desde localStorage o URL
-      const storedAssessmentId = localStorage.getItem('id_autoevaluacion')
-      if (storedAssessmentId) {
-        setAssessmentId(storedAssessmentId)
-      } else {
-        // ID de prueba por ahora - TODO: obtener de flujo real
-        setAssessmentId("1")
+      if (!bodegaId) {
+        setLoadError("No se encontró información de la bodega. Por favor, inicie sesión nuevamente.")
+        setIsLoading(false)
+        return
       }
+
+      setIdBodega(bodegaId)
     } catch (error) {
       console.error('Error al obtener usuario:', error)
       router.push("/login")
     }
   }, [router])
 
-  // Cargar segmentos disponibles al iniciar
+  // Crear autoevaluación y cargar segmentos
   useEffect(() => {
-    if (!assessmentId) return
+    if (!idBodega) return
 
-    const cargarSegmentosIniciales = async () => {
+    const iniciarAutoevaluacion = async () => {
       setIsLoading(true)
       setLoadError(null)
+
       try {
-        const data = await obtenerSegmentos(assessmentId)
+        const nuevaAutoevaluacion = await crearAutoevaluacion(idBodega)
+        const newId = String(nuevaAutoevaluacion.id_autoevaluacion)
+        setAssessmentId(newId)
+        localStorage.setItem('id_autoevaluacion', newId)
+
+        const data = await obtenerSegmentos(newId)
         setSegmentos(data)
         setIsSelectingSegment(true)
       } catch (error) {
-        console.error('Error al cargar segmentos iniciales:', error)
-        setLoadError(error instanceof Error ? error.message : 'Error al cargar segmentos')
+        console.error('Error al iniciar autoevaluación:', error)
+        setLoadError(error instanceof Error ? error.message : 'Error al crear la autoevaluación')
       } finally {
         setIsLoading(false)
         setLoadingSegmentos(false)
       }
     }
 
-    cargarSegmentosIniciales()
-  }, [assessmentId])
+    iniciarAutoevaluacion()
+  }, [idBodega])
 
   // Verificar si se puede finalizar
   useEffect(() => {
     if (estructura.length === 0) return
 
-    // Contar solo indicadores habilitados
     const totalIndicadoresHabilitados = estructura.reduce(
       (acc, cap) => acc + cap.indicadores.filter(ind => ind.habilitado).length,
       0
@@ -103,11 +116,10 @@ export default function AutoevaluacionPage() {
     setCanFinalize(completedIndicators === totalIndicadoresHabilitados && totalIndicadoresHabilitados > 0)
   }, [responses, estructura])
 
-  // Manejar cambio de respuesta individual
+  // Manejar cambio de respuesta
   const handleResponseChange = async (indicador: IndicadorEstructura, newLevel: number, newNivelId: number) => {
     if (!assessmentId || !currentCapitulo) return
 
-    // Optimistic update
     const key = `${currentCapitulo.capitulo.id_capitulo}-${indicador.indicador.id_indicador}`
     setResponses(prev => ({
       ...prev,
@@ -118,7 +130,6 @@ export default function AutoevaluacionPage() {
       await guardarRespuesta(assessmentId, indicador.indicador.id_indicador, newNivelId)
     } catch (error) {
       console.error('Error al guardar respuesta:', error)
-      // Revertir optimistic update si falla (opcional, o mostrar error toast)
     }
   }
 
@@ -137,19 +148,12 @@ export default function AutoevaluacionPage() {
     }
   }
 
-
-
-
-
   const handleFinalizeAssessment = async () => {
     if (!assessmentId) return
-
     setIsFinalizing(true)
-
     try {
       await completarAutoevaluacion(assessmentId)
-      alert('¡Autoevaluación completada exitosamente!')
-      router.push('/dashboard')
+      setShowSuccessDialog(true)
     } catch (error) {
       console.error('Error al finalizar:', error)
       alert(error instanceof Error ? error.message : 'Error al finalizar la autoevaluación')
@@ -176,8 +180,6 @@ export default function AutoevaluacionPage() {
 
   const handleSelectSegment = async (segmento: Segmento) => {
     if (!assessmentId) return
-
-    // Si ya tenemos estructura cargada, confirmar cambio. Si no (primera vez), proceder directamente.
     if (estructura.length > 0) {
       if (!confirm(`¿Desea cambiar al segmento "${segmento.nombre}"? Esto recargará la estructura de la evaluación.`)) return
     }
@@ -185,20 +187,12 @@ export default function AutoevaluacionPage() {
     setIsLoading(true)
     try {
       await seleccionarSegmento(assessmentId, segmento.id_segmento)
-
-      // Actualizar estado del segmento seleccionado
       setSelectedSegment(segmento)
-
-      // Cargar estructura después de seleccionar segmento
       const response = await obtenerEstructuraAutoevaluacion(assessmentId)
       setEstructura(response.capitulos)
-
-      // Inicializar selección
       if (response.capitulos.length > 0) {
-        const primerCapitulo = response.capitulos[0]
-        setCurrentCapitulo(primerCapitulo)
+        setCurrentCapitulo(response.capitulos[0])
       }
-
       setIsSelectingSegment(false)
     } catch (error) {
       console.error('Error al procesar segmento:', error)
@@ -208,7 +202,6 @@ export default function AutoevaluacionPage() {
     }
   }
 
-  // Estado de carga
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full p-8">
@@ -220,7 +213,6 @@ export default function AutoevaluacionPage() {
     )
   }
 
-  // Estado de error
   if (loadError) {
     return (
       <div className="flex items-center justify-center h-full p-8">
@@ -242,24 +234,13 @@ export default function AutoevaluacionPage() {
     )
   }
 
-  // Bypass de chequeo de datos si estamos seleccionando segmento
   if (!isSelectingSegment && !currentCapitulo) {
     return <div className="p-8">No hay datos disponibles</div>
   }
 
-  const isResponseSaved = (capituloId: number, indicadorId: number) => {
-    return `${capituloId}-${indicadorId}` in responses
-  }
-
-
-
   return (
-    <div className="flex h-full">
-
-
-      {/* Right content area */}
+    <div className="flex h-full flex-col">
       <div className="flex-1 p-8 space-y-6">
-        {/* Progress Dashboard */}
         {!isSelectingSegment && estructura.length > 0 && (
           <div className="bg-zinc-900 text-white p-4 rounded-lg shadow-md flex items-center justify-between gap-6">
             <div className="flex gap-8">
@@ -270,13 +251,7 @@ export default function AutoevaluacionPage() {
                     {selectedSegment?.nombre.split(' ')[0] || "General"}
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleOpenSegmentSelector}
-                  className="text-zinc-400 hover:text-white hover:bg-white/10 h-8 w-8"
-                  title="Cambiar Segmento"
-                >
+                <Button variant="ghost" size="icon" onClick={handleOpenSegmentSelector} className="text-zinc-400 hover:text-white hover:bg-white/10 h-8 w-8" title="Cambiar Segmento">
                   <Settings className="h-4 w-4" />
                 </Button>
               </div>
@@ -309,10 +284,7 @@ export default function AutoevaluacionPage() {
               </div>
               <div className="flex justify-between text-xs text-zinc-400 mt-1">
                 <span>
-                  {Object.keys(responses).length} de {estructura.reduce((acc, cap) => acc + cap.indicadores.filter(i => i.habilitado).length, 0)} evaluados • {Object.values(responses).reduce((a, b) => a + b, 0)} / {estructura.reduce((acc, cap) => acc + cap.indicadores.filter(i => i.habilitado).reduce((sum, ind) => {
-                    const maxPuntos = Math.max(...ind.niveles_respuesta.map(n => n.puntos))
-                    return sum + (isFinite(maxPuntos) ? maxPuntos : 0)
-                  }, 0), 0)} puntos
+                  {Object.keys(responses).length} de {estructura.reduce((acc, cap) => acc + cap.indicadores.filter(i => i.habilitado).length, 0)} evaluados
                 </span>
                 <span>{Math.round((Object.keys(responses).length / Math.max(1, estructura.reduce((acc, cap) => acc + cap.indicadores.filter(i => i.habilitado).length, 0))) * 100)}%</span>
               </div>
@@ -320,7 +292,6 @@ export default function AutoevaluacionPage() {
           </div>
         )}
 
-        {/* Lista de Indicadores del Capítulo Actual */}
         {!isSelectingSegment && currentCapitulo && (
           <div className="space-y-8">
             <div>
@@ -332,10 +303,7 @@ export default function AutoevaluacionPage() {
 
             {currentCapitulo.indicadores.filter(i => i.habilitado).map((indicadorWrapper, index) => {
               const key = `${currentCapitulo.capitulo.id_capitulo}-${indicadorWrapper.indicador.id_indicador}`
-              const savedValue = responses[key] // Returns points
-              // Find saved nivel ID not directly possible from responses map which stores points only,
-              // but we need points for UI selected state. 
-              // Wait, handleResponseChange updates points in 'responses'.
+              const savedValue = responses[key]
 
               return (
                 <Card key={indicadorWrapper.indicador.id_indicador} className="border-l-4 border-l-primary/20">
@@ -384,7 +352,6 @@ export default function AutoevaluacionPage() {
               )
             })}
 
-            {/* Navegación entre Capítulos */}
             <div className="flex justify-between items-center pt-8 border-t">
               <Button
                 variant="outline"
@@ -411,7 +378,6 @@ export default function AutoevaluacionPage() {
           </div>
         )}
 
-        {/* Placeholder para cuando se selecciona segmento y no hay card */}
         {isSelectingSegment && (
           <Card>
             <CardHeader>
@@ -457,6 +423,29 @@ export default function AutoevaluacionPage() {
           </Card>
         )}
       </div>
-    </div >
+
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 mb-4">
+              <CheckCircle2 className="h-6 w-6 text-green-600" />
+            </div>
+            <DialogTitle className="text-center text-xl">¡Autoevaluación completada!</DialogTitle>
+            <DialogDescription className="text-center pt-2">
+              Has finalizado exitosamente el proceso de autoevaluación.
+              Tus respuestas han sido guardadas correctamente.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-center pt-4">
+            <Button
+              className="bg-[#722F37] hover:bg-[#5a252c] min-w-[150px]"
+              onClick={() => router.push('/dashboard')}
+            >
+              Volver al Dashboard
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   )
 }

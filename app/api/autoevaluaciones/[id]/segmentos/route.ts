@@ -27,8 +27,8 @@ export async function GET(
             headers['Authorization'] = authHeader
         }
 
-        const backendUrl = `${API_BASE_URL}/api/v1/autoevaluaciones/${id}/segmentos`
-        
+        const backendUrl = `${API_BASE_URL}/api/autoevaluaciones/${id}/segmentos`
+
         const response = await fetch(backendUrl, {
             method: 'GET',
             headers,
