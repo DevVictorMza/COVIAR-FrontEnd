@@ -179,16 +179,26 @@ export default function AutoevaluacionPage() {
           const responsesMap: Record<string, number> = {}
           const apiResponsesMap: Record<number, number> = {}
 
+          // Primero, eliminar duplicados de la API (tomar la última ocurrencia)
+          const uniqueResponses = new Map<number, number>()
+          savedResponses.forEach(r => {
+            uniqueResponses.set(r.id_indicador, r.id_nivel_respuesta)
+          })
+
+          if (savedResponses.length !== uniqueResponses.size) {
+            console.warn(`⚠️ API devolvió ${savedResponses.length} respuestas pero solo ${uniqueResponses.size} son únicas`)
+          }
+
           // Buscar el nivel de puntos para cada respuesta guardada
           estructuraResponse.capitulos.forEach(cap => {
             cap.indicadores.forEach(ind => {
-              const savedResp = savedResponses.find(r => r.id_indicador === ind.indicador.id_indicador)
-              if (savedResp) {
+              const savedNivelId = uniqueResponses.get(ind.indicador.id_indicador)
+              if (savedNivelId !== undefined) {
                 // Guardar para API (id_indicador -> id_nivel_respuesta)
-                apiResponsesMap[ind.indicador.id_indicador] = savedResp.id_nivel_respuesta
+                apiResponsesMap[ind.indicador.id_indicador] = savedNivelId
 
                 // Guardar para UI (puntos)
-                const nivel = ind.niveles_respuesta.find(n => n.id_nivel_respuesta === savedResp.id_nivel_respuesta)
+                const nivel = ind.niveles_respuesta.find(n => n.id_nivel_respuesta === savedNivelId)
                 if (nivel) {
                   const key = `${cap.capitulo.id_capitulo}-${ind.indicador.id_indicador}`
                   responsesMap[key] = nivel.puntos
@@ -198,7 +208,7 @@ export default function AutoevaluacionPage() {
           })
           setResponses(responsesMap)
           setResponsesForApi(apiResponsesMap)
-          console.log(`Cargadas ${Object.keys(responsesMap).length} respuestas guardadas`)
+          console.log(`✅ Cargadas ${Object.keys(apiResponsesMap).length} respuestas guardadas (únicas)`)
         }
 
         setIsSelectingSegment(false)
@@ -289,11 +299,24 @@ export default function AutoevaluacionPage() {
       id_nivel_respuesta: idNivelRespuesta
     }))
 
+    // Verificar que no haya duplicados (seguridad adicional)
+    const indicadoresIds = respuestasArray.map(r => r.id_indicador)
+    const hasDuplicates = indicadoresIds.length !== new Set(indicadoresIds).size
+    if (hasDuplicates) {
+      console.error('⚠️ ERROR: Respuestas duplicadas detectadas:', indicadoresIds)
+      // No debería pasar nunca con un objeto, pero por seguridad
+      return
+    }
+
+    console.log('=== GUARDANDO RESPUESTAS ===')
+    console.log('Total a enviar:', respuestasArray.length)
+    console.log('Respuestas:', respuestasArray)
+
     try {
       await guardarRespuestas(assessmentId, respuestasArray)
-      console.log(`Guardadas ${respuestasArray.length} respuestas`)
+      console.log(`✅ Guardadas ${respuestasArray.length} respuestas exitosamente`)
     } catch (error) {
-      console.error('Error al guardar respuestas:', error)
+      console.error('❌ Error al guardar respuestas:', error)
     }
   }
 
