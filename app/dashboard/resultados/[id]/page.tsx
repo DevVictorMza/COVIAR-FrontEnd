@@ -175,20 +175,20 @@ export default function ResultadoDetallePage({ params }: PageProps) {
 
             {/* Tabla de Niveles de Sostenibilidad */}
             <Card className="border shadow-md">
-                <CardContent className="p-8">
-                    <div className="text-center mb-8">
-                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Niveles de Sostenibilidad</h2>
-                        <p className="text-gray-500">Guía de referencia de puntuación según segmento</p>
+                <CardContent className="p-4 md:p-8">
+                    <div className="text-center mb-6 md:mb-8">
+                        <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">Niveles de Sostenibilidad</h2>
+                        <p className="text-sm md:text-base text-gray-500">Guía de referencia de puntuación según segmento</p>
                     </div>
 
-                    <div className="flex justify-center gap-4 mb-6">
-                        <div className="px-4 py-2 bg-[#84cc16] text-white font-bold rounded text-sm uppercase">Nivel mínimo de sostenibilidad</div>
-                        <div className="px-4 py-2 bg-[#22c55e] text-white font-bold rounded text-sm uppercase">Nivel medio de sostenibilidad</div>
-                        <div className="px-4 py-2 bg-[#15803d] text-white font-bold rounded text-sm uppercase">Nivel alto de sostenibilidad</div>
+                    <div className="flex flex-col md:flex-row justify-center gap-2 md:gap-4 mb-6">
+                        <div className="px-4 py-2 bg-[#84cc16] text-white font-bold rounded text-xs md:text-sm uppercase text-center">Nivel mínimo de sostenibilidad</div>
+                        <div className="px-4 py-2 bg-[#22c55e] text-white font-bold rounded text-xs md:text-sm uppercase text-center">Nivel medio de sostenibilidad</div>
+                        <div className="px-4 py-2 bg-[#15803d] text-white font-bold rounded text-xs md:text-sm uppercase text-center">Nivel alto de sostenibilidad</div>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-center border-collapse">
+                    <div className="overflow-x-auto -mx-4 md:mx-0 px-4 md:px-0">
+                        <table className="w-full text-sm text-center border-collapse min-w-[700px]">
                             <thead>
                                 <tr className="bg-gray-50/50 border-b-2 border-gray-100">
                                     <th className="p-4 text-left font-bold text-gray-500 uppercase text-xs w-1/4">SEGMENTO</th>

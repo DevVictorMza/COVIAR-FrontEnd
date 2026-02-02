@@ -78,9 +78,9 @@ export default function DashboardPage() {
       <div className="space-y-12 max-w-5xl mx-auto pb-12">
         {/* Título Principal */}
         <div className="text-center space-y-4">
-          <h2 className="text-4xl md:text-5xl font-black text-[#880D1E] tracking-tight uppercase">
+          <h2 className="text-4xl md:text-5xl font-bold font-serif text-coviar-borravino tracking-tight uppercase">
             Guía de Autoevaluación
-            <span className="block text-foreground mt-2">Sostenibilidad Enoturística Argentina</span>
+            <span className="block text-foreground mt-2 font-sans font-black">Sostenibilidad Enoturística Argentina</span>
           </h2>
           <p className="text-muted-foreground font-medium tracking-widest uppercase">
             #PEVI2030 El Plan de la Vitivinicultura Argentina
@@ -101,30 +101,30 @@ export default function DashboardPage() {
 
         <div className="grid md:grid-cols-2 gap-8">
           {/* ¿Para qué sirve? */}
-          <Card className="border-l-4 border-l-[#880D1E] shadow-sm">
+          <Card className="border-l-4 border-l-coviar-borravino shadow-sm">
             <CardHeader>
               <CardTitle className="text-xl font-bold">¿Para qué sirve?</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-3 text-muted-foreground">
                 <li className="flex gap-2">
-                  <span className="text-[#880D1E] font-bold">•</span>
+                  <span className="text-coviar-borravino font-bold">•</span>
                   Diagnosticar su situación actual en materia de sostenibilidad enoturística.
                 </li>
                 <li className="flex gap-2">
-                  <span className="text-[#880D1E] font-bold">•</span>
+                  <span className="text-coviar-borravino font-bold">•</span>
                   Identificar brechas y oportunidades de mejora en su gestión turística.
                 </li>
                 <li className="flex gap-2">
-                  <span className="text-[#880D1E] font-bold">•</span>
+                  <span className="text-coviar-borravino font-bold">•</span>
                   Planificar acciones concretas a corto, mediano y largo plazo.
                 </li>
                 <li className="flex gap-2">
-                  <span className="text-[#880D1E] font-bold">•</span>
+                  <span className="text-coviar-borravino font-bold">•</span>
                   Ordenar sus prácticas según estándares internacionales reconocidos.
                 </li>
                 <li className="flex gap-2">
-                  <span className="text-[#880D1E] font-bold">•</span>
+                  <span className="text-coviar-borravino font-bold">•</span>
                   Comunicar resultados de manera consistente a turistas, instituciones y otros públicos de interés.
                 </li>
               </ul>
@@ -132,22 +132,22 @@ export default function DashboardPage() {
           </Card>
 
           {/* ¿Qué beneficios aporta? */}
-          <Card className="border-l-4 border-l-[#880D1E] shadow-sm">
+          <Card className="border-l-4 border-l-coviar-borravino shadow-sm">
             <CardHeader>
               <CardTitle className="text-xl font-bold">¿Qué beneficios aporta?</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-3 text-muted-foreground">
                 <li className="flex gap-2">
-                  <span className="text-[#880D1E] font-bold">•</span>
+                  <span className="text-coviar-borravino font-bold">•</span>
                   Mejorar la calidad y eficiencia de la experiencia turística.
                 </li>
                 <li className="flex gap-2">
-                  <span className="text-[#880D1E] font-bold">•</span>
+                  <span className="text-coviar-borravino font-bold">•</span>
                   Aumentar la satisfacción del visitante, especialmente del turista consciente.
                 </li>
                 <li className="flex gap-2">
-                  <span className="text-[#880D1E] font-bold">•</span>
+                  <span className="text-coviar-borravino font-bold">•</span>
                   Reducir riesgos operativos, ambientales y reputacionales.
                 </li>
                 <li className="flex gap-2">

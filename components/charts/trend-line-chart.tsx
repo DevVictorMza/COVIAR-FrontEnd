@@ -46,7 +46,7 @@ export function TrendLineChart({ data, className }: TrendLineChartProps) {
                                     <div className="bg-background border border-border rounded-lg shadow-lg p-3">
                                         <p className="font-medium text-sm">Evaluación #{data.evaluacion}</p>
                                         <p className="text-muted-foreground text-sm">{data.name}</p>
-                                        <p className="text-[#880D1E] font-bold">{data.porcentaje}%</p>
+                                        <p className="text-[#81242d] font-bold">{data.porcentaje}%</p>
                                         {data.puntaje && (
                                             <p className="text-sm text-muted-foreground">Puntaje: {data.puntaje}</p>
                                         )}
@@ -61,9 +61,9 @@ export function TrendLineChart({ data, className }: TrendLineChartProps) {
                         type="monotone"
                         dataKey="porcentaje"
                         name="Porcentaje"
-                        stroke="#880D1E"
+                        stroke="#81242d"
                         strokeWidth={2}
-                        dot={{ fill: '#880D1E', r: 4 }}
+                        dot={{ fill: '#81242d', r: 4 }}
                         activeDot={{ r: 6 }}
                     />
                 </LineChart>

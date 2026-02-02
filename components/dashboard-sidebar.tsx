@@ -85,9 +85,10 @@ export function DashboardSidebar() {
   return (
     <div className="flex h-full w-64 flex-col bg-sidebar border-r border-sidebar-border">
       {/* Header con logo */}
-      <div className="flex h-auto min-h-[180px] w-full items-center justify-center border-b border-sidebar-border bg-black py-6 px-4">
+      <div className="flex h-auto min-h-[120px] w-full items-center justify-center border-b border-sidebar-border bg-black py-4 px-4">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/sidebar-logo-hq.png"
+          src="/assets/logos/logoclarovert.png"
           alt="Coviar - Corporación Vitivinícola Argentina"
           className="w-full h-auto object-contain"
           style={{ maxWidth: "200px" }}

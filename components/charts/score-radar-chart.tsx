@@ -35,8 +35,8 @@ export function ScoreRadarChart({ data, className }: ScoreRadarChartProps) {
                     <Radar
                         name="Puntaje"
                         dataKey="score"
-                        stroke="#880D1E"
-                        fill="#880D1E"
+                        stroke="#81242d"
+                        fill="#81242d"
                         fillOpacity={0.3}
                     />
                     <Tooltip
@@ -46,7 +46,7 @@ export function ScoreRadarChart({ data, className }: ScoreRadarChartProps) {
                                 return (
                                     <div className="bg-background border border-border rounded-lg shadow-lg p-3">
                                         <p className="font-medium text-sm">{data.fullName}</p>
-                                        <p className="text-[#880D1E] font-bold">{data.score}%</p>
+                                        <p className="text-[#81242d] font-bold">{data.score}%</p>
                                     </div>
                                 )
                             }

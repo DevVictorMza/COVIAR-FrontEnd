@@ -478,58 +478,57 @@ export default function AutoevaluacionPage() {
     <div className="flex h-full flex-col">
       <div className="flex-1 p-8 space-y-6">
         {!isSelectingSegment && estructura.length > 0 && (
-          <div className="bg-zinc-900 text-white p-4 rounded-lg shadow-md flex items-center justify-between gap-6">
-            <div className="flex gap-8">
-              <div className="flex items-center gap-3">
-                <div>
-                  <div className="text-xs text-zinc-400 uppercase font-semibold">Categoría</div>
-                  <div className="font-bold text-lg leading-tight">
+          <div className="bg-muted border border-border p-4 rounded-lg shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="flex flex-col sm:flex-row gap-6 sm:gap-8 w-full md:w-auto">
+              <div className="flex items-center gap-3 justify-between sm:justify-start w-full sm:w-auto">
+                <div className="flex-1 sm:flex-initial">
+                  <div className="text-xs text-muted-foreground uppercase font-semibold">Categoría</div>
+                  <div className="font-bold text-lg leading-tight text-foreground truncate">
                     {selectedSegment?.nombre.split(' ')[0] || "General"}
                   </div>
                 </div>
-                <Button variant="ghost" size="icon" onClick={handleOpenSegmentSelector} className="text-zinc-400 hover:text-white hover:bg-white/10 h-8 w-8" title="Cambiar Segmento">
+                <Button variant="ghost" size="icon" onClick={handleOpenSegmentSelector} className="text-muted-foreground hover:text-foreground h-8 w-8 shrink-0" title="Cambiar Segmento">
                   <Settings className="h-4 w-4" />
                 </Button>
               </div>
 
-              <div className="border-l border-zinc-700 pl-6">
-                <div className="text-xs text-zinc-400 uppercase font-semibold">Indicadores a evaluar</div>
-                <div className="font-bold text-lg leading-tight">
-                  {estructura.reduce((acc, cap) => acc + cap.indicadores.filter(i => i.habilitado).length, 0)}
-                </div>
-              </div>
+              <div className="flex gap-6 sm:border-l sm:border-border sm:pl-6 justify-between sm:justify-start overflow-x-auto pb-2 sm:pb-0">
+                 <div className="whitespace-nowrap">
+                    <div className="text-xs text-muted-foreground uppercase font-semibold">Indicadores</div>
+                    <div className="font-bold text-lg leading-tight text-foreground">
+                      {estructura.reduce((acc, cap) => acc + cap.indicadores.filter(i => i.habilitado).length, 0)}
+                    </div>
+                 </div>
+                 
+                 <div className="whitespace-nowrap border-l border-border pl-6">
+                   <div className="text-xs text-muted-foreground uppercase font-semibold">Máx Puntos</div>
+                   <div className="font-bold text-lg leading-tight text-foreground">
+                     {estructura.reduce((acc, cap) => acc + cap.indicadores.filter(i => i.habilitado).reduce((sum, ind) => {
+                       const maxPuntos = Math.max(...ind.niveles_respuesta.map(n => n.puntos))
+                       return sum + (isFinite(maxPuntos) ? maxPuntos : 0)
+                     }, 0), 0)}
+                   </div>
+                 </div>
 
-              <div className="border-l border-zinc-700 pl-6">
-                <div className="text-xs text-zinc-400 uppercase font-semibold">Puntuación máxima</div>
-                <div className="font-bold text-lg leading-tight">
-                  {estructura.reduce((acc, cap) => acc + cap.indicadores.filter(i => i.habilitado).reduce((sum, ind) => {
-                    const maxPuntos = Math.max(...ind.niveles_respuesta.map(n => n.puntos))
-                    return sum + (isFinite(maxPuntos) ? maxPuntos : 0)
-                  }, 0), 0)} puntos
-                </div>
-              </div>
-
-              <div className="border-l border-zinc-700 pl-6">
-                <div className="text-xs text-zinc-400 uppercase font-semibold">Puntuación actual</div>
-                <div className="font-bold text-lg leading-tight bg-gradient-to-r from-orange-400 to-yellow-400 bg-clip-text text-transparent">
-                  {Object.values(responses).reduce((acc, puntos) => acc + puntos, 0)} puntos
-                </div>
+                 <div className="whitespace-nowrap border-l border-border pl-6">
+                   <div className="text-xs text-muted-foreground uppercase font-semibold">Tu Puntaje</div>
+                   <div className="font-bold text-lg leading-tight bg-gradient-to-r from-coviar-borravino to-coviar-red bg-clip-text text-transparent">
+                     {Object.values(responses).reduce((acc, puntos) => acc + puntos, 0)}
+                   </div>
+                 </div>
               </div>
             </div>
 
-            <div className="flex-1 max-w-xl">
-              <div className="text-xs text-zinc-400 mb-2">Progreso general</div>
-              <div className="h-2 w-full bg-zinc-700 rounded-full overflow-hidden">
+            <div className="flex-1 w-full md:max-w-xs lg:max-w-sm xl:max-w-md">
+              <div className="text-xs text-muted-foreground mb-2 flex justify-between">
+                <span>Progreso</span>
+                <span>{Math.round((Object.keys(responses).length / Math.max(1, estructura.reduce((acc, cap) => acc + cap.indicadores.filter(i => i.habilitado).length, 0))) * 100)}%</span>
+              </div>
+              <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-orange-400 to-yellow-400"
+                  className="h-full bg-gradient-to-r from-coviar-borravino to-coviar-red transition-all duration-500 ease-out"
                   style={{ width: `${(Object.keys(responses).length / Math.max(1, estructura.reduce((acc, cap) => acc + cap.indicadores.filter(i => i.habilitado).length, 0))) * 100}%` }}
                 ></div>
-              </div>
-              <div className="flex justify-between text-xs text-zinc-400 mt-1">
-                <span>
-                  {Object.keys(responses).length} de {estructura.reduce((acc, cap) => acc + cap.indicadores.filter(i => i.habilitado).length, 0)} evaluados
-                </span>
-                <span>{Math.round((Object.keys(responses).length / Math.max(1, estructura.reduce((acc, cap) => acc + cap.indicadores.filter(i => i.habilitado).length, 0))) * 100)}%</span>
               </div>
             </div>
           </div>
@@ -595,11 +594,12 @@ export default function AutoevaluacionPage() {
               )
             })}
 
-            <div className="flex justify-between items-center pt-8 border-t">
+            <div className="flex flex-col-reverse sm:flex-row justify-between items-center gap-4 pt-8 border-t">
               <Button
                 variant="outline"
                 onClick={() => cambiarCapitulo('prev')}
                 disabled={estructura.findIndex(c => c.capitulo.id_capitulo === currentCapitulo.capitulo.id_capitulo) === 0}
+                className="w-full sm:w-auto"
               >
                 Anterior Capítulo
               </Button>
@@ -608,22 +608,22 @@ export default function AutoevaluacionPage() {
                 <Button
                   onClick={handleFinalizeAssessment}
                   disabled={!canFinalize || isFinalizing}
-                  className="bg-[#81242d] hover:bg-[#6D1A1A]"
+                  className="bg-coviar-borravino hover:bg-coviar-borravino-dark text-white w-full sm:w-auto"
                 >
                   {isFinalizing ? "Finalizando..." : "Finalizar Autoevaluación"}
                 </Button>
               ) : (
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
                   {!isCurrentChapterComplete() && (
-                    <span className="text-sm text-amber-600 flex items-center gap-1">
-                      <AlertCircle className="h-4 w-4" />
-                      Completa todos los indicadores para continuar
+                    <span className="text-sm text-amber-600 flex items-center gap-1 order-2 sm:order-1 text-center sm:text-left">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      Completa todos los indicadores
                     </span>
                   )}
                   <Button
                     onClick={() => cambiarCapitulo('next')}
                     disabled={!isCurrentChapterComplete()}
-                    className={!isCurrentChapterComplete() ? "opacity-50" : ""}
+                    className={`${!isCurrentChapterComplete() ? "opacity-50" : ""} w-full sm:w-auto order-1 sm:order-2`}
                   >
                     Siguiente Capítulo
                     <ChevronRight className="h-4 w-4 ml-1" />
@@ -781,7 +781,7 @@ export default function AutoevaluacionPage() {
             </Button>
             <Button
               onClick={handleContinuePending}
-              className="order-1 sm:order-2 bg-[#722F37] hover:bg-[#5a252c] text-white font-medium"
+              className="order-1 sm:order-2 bg-coviar-borravino hover:bg-coviar-borravino-dark text-white font-medium"
             >
               {!pendingInfo?.tieneSegmento
                 ? "Seleccionar Segmento"
@@ -805,7 +805,7 @@ export default function AutoevaluacionPage() {
           </DialogHeader>
           <DialogFooter className="sm:justify-center pt-4">
             <Button
-              className="bg-[#722F37] hover:bg-[#5a252c] min-w-[150px]"
+              className="bg-coviar-borravino hover:bg-coviar-borravino-dark min-w-[150px]"
               onClick={() => router.push(`/dashboard/resultados/${assessmentId}`)}
             >
               Ver Resultados

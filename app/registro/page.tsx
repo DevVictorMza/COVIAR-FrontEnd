@@ -191,13 +191,13 @@ export default function RegistroPage() {
       {/* Header */}
       <div className="text-center mb-8">
         <div className="flex justify-center mb-4">
-          <div className="w-16 h-16 bg-[#722F37] rounded-lg flex items-center justify-center">
+          <div className="w-16 h-16 bg-coviar-borravino rounded-lg flex items-center justify-center">
             <svg viewBox="0 0 24 24" className="w-10 h-10 text-white" fill="currentColor">
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="1.5" fill="none" />
             </svg>
           </div>
         </div>
-        <h1 className="text-2xl font-bold text-[#722F37]">Coviar</h1>
+        <h1 className="text-2xl font-bold text-coviar-borravino">Coviar</h1>
         <p className="text-sm text-muted-foreground uppercase tracking-wide">Corporación Vitivinícola Argentina</p>
         <h2 className="text-2xl font-semibold mt-4">Registro de Bodega – Perfil de la Bodega</h2>
         <p className="text-muted-foreground mt-2">Complete el formulario para registrar su bodega en la plataforma de sostenibilidad</p>
@@ -209,7 +209,7 @@ export default function RegistroPage() {
 
             {/* Sección: Datos de Acceso */}
             <section className="space-y-4">
-              <h3 className="text-lg font-semibold text-[#722F37] border-b border-[#722F37]/20 pb-2">
+              <h3 className="text-lg font-semibold text-coviar-borravino border-b border-coviar-borravino/20 pb-2">
                 Datos de Acceso
               </h3>
 
@@ -252,7 +252,7 @@ export default function RegistroPage() {
 
             {/* Sección: Datos de la Bodega */}
             <section className="space-y-4">
-              <h3 className="text-lg font-semibold text-[#722F37] border-b border-[#722F37]/20 pb-2">
+              <h3 className="text-lg font-semibold text-coviar-borravino border-b border-coviar-borravino/20 pb-2">
                 Datos de la Bodega
               </h3>
 
@@ -332,7 +332,7 @@ export default function RegistroPage() {
 
             {/* Sección: Responsable */}
             <section className="space-y-4">
-              <h3 className="text-lg font-semibold text-[#722F37] border-b border-[#722F37]/20 pb-2">
+              <h3 className="text-lg font-semibold text-coviar-borravino border-b border-coviar-borravino/20 pb-2">
                 Responsable
               </h3>
 
@@ -379,7 +379,7 @@ export default function RegistroPage() {
 
             {/* Sección: Ubicación */}
             <section className="space-y-4">
-              <h3 className="text-lg font-semibold text-[#722F37] border-b border-[#722F37]/20 pb-2">
+              <h3 className="text-lg font-semibold text-coviar-borravino border-b border-coviar-borravino/20 pb-2">
                 Ubicación
               </h3>
 
@@ -488,7 +488,7 @@ export default function RegistroPage() {
 
             <Button
               type="submit"
-              className="w-full bg-[#722F37] hover:bg-[#5a252c] text-white py-6 text-lg"
+              className="w-full bg-coviar-borravino hover:bg-coviar-borravino-dark text-white py-6 text-lg"
               disabled={isLoading}
             >
               {isLoading ? "Registrando..." : "Registrar Bodega"}
@@ -496,7 +496,7 @@ export default function RegistroPage() {
 
             <div className="text-center text-sm text-muted-foreground">
               ¿Ya tienes una cuenta?{" "}
-              <Link href="/login" className="text-[#722F37] hover:underline font-medium">
+              <Link href="/login" className="text-coviar-borravino hover:underline font-medium">
                 Inicia sesión
               </Link>
             </div>
