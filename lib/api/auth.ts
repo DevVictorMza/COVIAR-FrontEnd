@@ -133,19 +133,42 @@ export function isAuthenticated(): boolean {
 
 /**
  * Solicita restablecimiento de contraseña
+ * Usa el proxy de Next.js para evitar problemas de CORS
  */
 export async function solicitarRestablecimientoPassword(email: string): Promise<void> {
-  await api.post('/api/usuarios/recuperar-password', { email })
+  const response = await fetch('/api/auth/recuperar-password', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email }),
+  })
+
+  const result = await response.json()
+
+  if (!response.ok) {
+    throw new Error(result.message || `Error ${response.status}: ${response.statusText}`)
+  }
 }
 
 /**
  * Restablece la contraseña con un token
+ * Usa el proxy de Next.js para evitar problemas de CORS
  */
 export async function restablecerPassword(token: string, nuevaPassword: string): Promise<void> {
-  await api.post('/api/usuarios/restablecer-password', {
-    token,
-    nuevaPassword,
+  const response = await fetch('/api/auth/restablecer-password', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ token, newPassword: nuevaPassword }),
   })
+
+  const result = await response.json()
+
+  if (!response.ok) {
+    throw new Error(result.message || `Error ${response.status}: ${response.statusText}`)
+  }
 }
 
 /**
