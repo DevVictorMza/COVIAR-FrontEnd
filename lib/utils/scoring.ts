@@ -21,6 +21,45 @@ export const NIVELES_SOSTENIBILIDAD = [
     { min: 90, max: 100, nombre: 'Ejemplar', color: '#10b981', descripcion: 'Referente en sostenibilidad enoturística' },
 ]
 
+export type SegmentoTipo =
+    | 'micro_bodega'
+    | 'pequena_bodega'
+    | 'mediana_bodega'
+    | 'bodega'
+    | 'gran_bodega'
+
+export const RANGOS_POR_SEGMENTO: Record<SegmentoTipo, {
+    minimo: { min: number; max: number }
+    medio: { min: number; max: number }
+    alto: { min: number; max: number }
+}> = {
+    micro_bodega: {
+        minimo: { min: 17, max: 38 },
+        medio: { min: 39, max: 45 },
+        alto: { min: 46, max: 51 }
+    },
+    pequena_bodega: {
+        minimo: { min: 23, max: 51 },
+        medio: { min: 52, max: 61 },
+        alto: { min: 62, max: 69 }
+    },
+    mediana_bodega: {
+        minimo: { min: 32, max: 71 },
+        medio: { min: 72, max: 85 },
+        alto: { min: 86, max: 96 }
+    },
+    bodega: {
+        minimo: { min: 42, max: 93 },
+        medio: { min: 94, max: 112 },
+        alto: { min: 113, max: 126 }
+    },
+    gran_bodega: {
+        minimo: { min: 42, max: 93 },
+        medio: { min: 94, max: 112 },
+        alto: { min: 113, max: 126 }
+    }
+}
+
 /**
  * Calcula el puntaje máximo posible de toda la estructura
  */
