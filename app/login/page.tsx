@@ -46,7 +46,14 @@ export default function LoginPage() {
       router.push("/dashboard")
     } catch (error: unknown) {
       console.error('Error en login:', error)
-      setError(error instanceof Error ? error.message : "Ocurrió un error al iniciar sesión")
+      const errorMessage = error instanceof Error ? error.message : "Ocurrió un error al iniciar sesión"
+
+      // Personalizar mensaje para error de credenciales incorrectas
+      if (errorMessage.includes("401") || errorMessage.includes("Unauthorized")) {
+        setError("Su email o contraseña no coinciden")
+      } else {
+        setError(errorMessage)
+      }
     } finally {
       setIsLoading(false)
     }
@@ -62,22 +69,22 @@ export default function LoginPage() {
         </div>
         <span className="font-medium text-sm drop-shadow-md">Volver al inicio</span>
       </Link>
-      
+
       {/* Background from Landing */}
       <div className="absolute inset-0 z-0">
         <div className="w-full h-full bg-gray-200">
-           {/* eslint-disable-next-line @next/next/no-img-element */}
-           <img src="/assets/header-banner.png" alt="Viñedo" className="w-full h-full object-cover" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/assets/header-banner.png" alt="Viñedo" className="w-full h-full object-cover" />
         </div>
         <div className="absolute inset-0 bg-gradient-to-r from-coviar-borravino/95 to-coviar-borravino/70 mix-blend-multiply"></div>
       </div>
 
       <Card className="relative z-10 w-full max-w-md overflow-hidden p-0 shadow-2xl border-0">
         <CardHeader className="bg-white border-b p-8">
-           <div className="flex justify-center mb-4">
-               {/* eslint-disable-next-line @next/next/no-img-element */}
-               <img src="/assets/logos/logocolorhorz.png" alt="Coviar" className="h-20 object-contain" />
-            </div>
+          <div className="flex justify-center mb-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/assets/logos/logocolorhorz.png" alt="Coviar" className="h-20 object-contain" />
+          </div>
           <CardTitle className="text-2xl text-center font-serif text-coviar-borravino font-bold">Bienvenido</CardTitle>
           <CardDescription className="text-gray-500 text-center">
             Plataforma de Autoevaluación de Sostenibilidad
@@ -119,17 +126,17 @@ export default function LoginPage() {
                 </button>
               </div>
               <div className="flex justify-end pt-1">
-                 <Link href="/recuperar-contrasena" className="text-xs text-muted-foreground hover:text-coviar-borravino transition-colors">
+                <Link href="/recuperar-contrasena" className="text-xs text-muted-foreground hover:text-coviar-borravino transition-colors">
                   ¿Olvidaste tu contraseña?
                 </Link>
               </div>
             </div>
             {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>}
-            
+
             <Button type="submit" className="w-full bg-coviar-borravino hover:bg-coviar-borravino-dark h-11 text-base font-medium" disabled={isLoading}>
               {isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
             </Button>
-            
+
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
@@ -150,7 +157,7 @@ export default function LoginPage() {
           </form>
         </CardContent>
       </Card>
-      
+
       {/* Footer decorations or text if needed */}
       <div className="absolute bottom-4 left-0 right-0 text-center text-white/50 text-xs z-10 p-4">
         &copy; {new Date().getFullYear()} Corporación Vitivinícola Argentina. Todos los derechos reservados.

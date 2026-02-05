@@ -28,6 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { SegmentConfirmationModal } from "@/components/autoevaluacion/segment-confirmation-modal"
 
 export default function AutoevaluacionPage() {
   const router = useRouter()
@@ -47,6 +48,7 @@ export default function AutoevaluacionPage() {
   const [isFinalizing, setIsFinalizing] = useState(false)
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
   const [showPendingDialog, setShowPendingDialog] = useState(false)
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false)
 
   // Estado para segmentos
   const [isSelectingSegment, setIsSelectingSegment] = useState(true)
@@ -173,8 +175,20 @@ export default function AutoevaluacionPage() {
       const estructuraResponse = await obtenerEstructuraAutoevaluacion(autoId)
 
       if (estructuraResponse.capitulos && estructuraResponse.capitulos.length > 0) {
-        setEstructura(estructuraResponse.capitulos)
-        setCurrentCapitulo(estructuraResponse.capitulos[0])
+        // Filtrar capítulos que no tengan indicadores habilitados
+        const capitulosFiltrados = estructuraResponse.capitulos.filter(cap =>
+          cap.indicadores.some(ind => ind.habilitado)
+        )
+
+        setEstructura(capitulosFiltrados)
+        if (capitulosFiltrados.length > 0) {
+          setCurrentCapitulo(capitulosFiltrados[0])
+        } else {
+          // Manejar caso donde no hay ningún capítulo habilitado (raro pero posible)
+          setEstructura([])
+          setCurrentCapitulo(null)
+        }
+
 
         // Si hay respuestas guardadas, pre-cargarlas
         if (savedResponses.length > 0) {
@@ -467,16 +481,33 @@ export default function AutoevaluacionPage() {
       setSelectedSegment(segmento)
       setAssessmentId(currentId) // Asegurar que assessmentId esté seteado
       const response = await obtenerEstructuraAutoevaluacion(currentId)
-      setEstructura(response.capitulos)
-      if (response.capitulos.length > 0) {
-        setCurrentCapitulo(response.capitulos[0])
+
+      // Filtrar capítulos que no tengan indicadores habilitados
+      const capitulosFiltrados = response.capitulos.filter(cap =>
+        cap.indicadores.some(ind => ind.habilitado)
+      )
+
+      setEstructura(capitulosFiltrados)
+      if (capitulosFiltrados.length > 0) {
+        // Mostramos el modal y mantenemos isSelectingSegment=true para que se renderice el modal sobre la lista
+        setShowConfirmationModal(true)
+      } else {
+        // Si no hay capítulos (raro), salimos de la selección
+        setIsSelectingSegment(false)
       }
-      setIsSelectingSegment(false)
     } catch (error) {
       console.error('Error al procesar segmento:', error)
       alert(error instanceof Error ? error.message : 'Error al procesar el segmento')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleStartFromModal = () => {
+    setShowConfirmationModal(false)
+    setIsSelectingSegment(false)
+    if (estructura.length > 0) {
+      setCurrentCapitulo(estructura[0])
     }
   }
 
@@ -707,10 +738,10 @@ export default function AutoevaluacionPage() {
                       <CardHeader className="py-4">
                         <CardTitle className="text-lg">{seg?.nombre ?? 'Segmento'}</CardTitle>
                         <CardDescription>
-                          {seg?.min_turistas != null && seg?.max_turistas != null
-                            ? seg.min_turistas === 0 && seg.max_turistas === 999
-                              ? "Menos de 1,000 turistas anuales"
-                              : `${seg.min_turistas.toLocaleString()} - ${seg.max_turistas.toLocaleString()} turistas anuales`
+                          {seg?.min_turistas != null
+                            ? seg.max_turistas != null
+                              ? `${seg.min_turistas.toLocaleString()} - ${seg.max_turistas.toLocaleString()} turistas anuales`
+                              : `Desde ${seg.min_turistas.toLocaleString()} turistas anuales`
                             : 'Información no disponible'}
                         </CardDescription>
                       </CardHeader>
@@ -839,28 +870,15 @@ export default function AutoevaluacionPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 mb-4">
-              <CheckCircle2 className="h-6 w-6 text-green-600" />
-            </div>
-            <DialogTitle className="text-center text-xl">¡Autoevaluación completada!</DialogTitle>
-            <DialogDescription className="text-center pt-2">
-              Has finalizado exitosamente el proceso de autoevaluación.
-              Tus respuestas han sido guardadas correctamente.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="sm:justify-center pt-4">
-            <Button
-              className="bg-coviar-borravino hover:bg-coviar-borravino-dark min-w-[150px]"
-              onClick={() => router.push(`/dashboard/resultados/${assessmentId}`)}
-            >
-              Ver Resultados
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Modal de confirmación de segmento */}
+      {selectedSegment && (
+        <SegmentConfirmationModal
+          isOpen={showConfirmationModal}
+          onClose={handleStartFromModal}
+          segmentName={selectedSegment.nombre}
+          estructura={estructura}
+        />
+      )}
     </div>
   )
 }
