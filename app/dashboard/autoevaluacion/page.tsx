@@ -18,7 +18,7 @@ import {
   cancelarAutoevaluacion
 } from "@/lib/api/autoevaluacion"
 import type { CapituloEstructura, IndicadorEstructura, Segmento, ResultadoDetallado } from "@/lib/api/types"
-import { calculateChapterScores } from "@/lib/utils/scoring"
+import { calculateChapterScores, determineLevelByScoreAndSegment } from "@/lib/utils/scoring"
 import { saveResultToLocalHistory } from "@/lib/utils/storage-utils"
 import {
   Dialog,
@@ -441,6 +441,30 @@ export default function AutoevaluacionPage() {
       // Guardar usando la utilidad centralizada
       saveResultToLocalHistory(resultadoCompleto)
 
+      // Obtener datos del usuario para guardar bodega y responsable
+      const usuarioStr = localStorage.getItem('usuario')
+      const usuarioData = usuarioStr ? JSON.parse(usuarioStr) : null
+
+      // Obtener el responsable activo desde la API (como en configuración)
+      let nombreResponsable = 'N/A'
+      const idCuenta = usuarioData?.id_cuenta
+      if (idCuenta) {
+        try {
+          const responsablesResponse = await fetch(`/api/cuentas/${idCuenta}/responsables`, {
+            credentials: 'include'
+          })
+          if (responsablesResponse.ok) {
+            const responsables = await responsablesResponse.json()
+            const responsableActivo = responsables.find((r: { activo: boolean }) => r.activo)
+            if (responsableActivo) {
+              nombreResponsable = `${responsableActivo.nombre || ''} ${responsableActivo.apellido || ''}`.trim() || 'N/A'
+            }
+          }
+        } catch (e) {
+          console.error('Error al obtener responsable:', e)
+        }
+      }
+
       // Mantener compatibilidad con otras vistas que puedan usar este formato específico anterior (opcional)
       const resultData = {
         assessmentId,
@@ -448,12 +472,26 @@ export default function AutoevaluacionPage() {
         puntaje_maximo: maxScore,
         porcentaje,
         fecha_completo: new Date().toISOString(),
-        segmento: selectedSegment?.nombre || 'N/A'
+        segmento: selectedSegment?.nombre || 'N/A',
+        // Datos de bodega y responsable
+        nombre_bodega: usuarioData?.bodega?.nombre_fantasia || usuarioData?.bodega?.razon_social || 'N/A',
+        responsable: nombreResponsable
       }
       localStorage.setItem(`resultado_${assessmentId}`, JSON.stringify(resultData))
 
-      // Redirigir a la página de resultados
-      router.push(`/dashboard/resultados/${assessmentId}`)
+      // Calcular el nivel de sostenibilidad basado en puntaje y segmento
+      const nivelCalculado = determineLevelByScoreAndSegment(totalScore, selectedSegment?.nombre)
+
+      // Guardar como último resultado completado para la vista principal de resultados
+      const ultimoResultado = {
+        ...resultData,
+        capitulos: calculateChapterScores(responsesForScoring, estructura),
+        nivel_sostenibilidad: nivelCalculado.nombre
+      }
+      localStorage.setItem('ultimo_resultado_completado', JSON.stringify(ultimoResultado))
+
+      // Redirigir a la página de resultados principal
+      router.push('/dashboard/resultados')
     } catch (error) {
       console.error('Error al finalizar:', error)
       alert(error instanceof Error ? error.message : 'Error al finalizar la autoevaluación')

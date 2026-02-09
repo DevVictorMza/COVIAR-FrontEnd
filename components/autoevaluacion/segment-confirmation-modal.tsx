@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle2, FileText, ArrowRight, ArrowLeft, Award, ChevronLeft, ChevronRight } from "lucide-react"
+import { CheckCircle2, FileText, ArrowRight, ArrowLeft, Award, ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react"
 
 interface CapituloEstructura {
     capitulo: {
@@ -52,10 +52,11 @@ export function SegmentConfirmationModal({
     const activeChapters = activeStructure.length
     const activeIndicators = activeStructure.reduce((acc, cap) => acc + cap.indicadores.length, 0)
 
-    // Total de páginas: 1 (resumen) + número de capítulos
-    const totalPages = 1 + activeChapters
+    // Total de páginas: 1 (resumen) + número de capítulos + 1 (instrucciones RECUERDA)
+    const totalPages = 1 + activeChapters + 1
     const isLastPage = currentPage === totalPages - 1
     const isFirstPage = currentPage === 0
+    const isInstructionsPage = currentPage === totalPages - 1
 
     const handleNext = () => {
         if (!isLastPage) {
@@ -74,8 +75,8 @@ export function SegmentConfirmationModal({
         onClose()
     }
 
-    // Capítulo actual (si estamos en una página de capítulo)
-    const currentChapter = currentPage > 0 ? activeStructure[currentPage - 1] : null
+    // Capítulo actual (si estamos en una página de capítulo, no en resumen ni en instrucciones)
+    const currentChapter = currentPage > 0 && currentPage <= activeChapters ? activeStructure[currentPage - 1] : null
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
@@ -163,6 +164,64 @@ export function SegmentConfirmationModal({
                                 <p className="text-center text-xs text-gray-400">
                                     {currentChapter.indicadores.length} indicador{currentChapter.indicadores.length !== 1 ? 'es' : ''} en este capítulo
                                 </p>
+                            </div>
+                        )}
+
+                        {/* Página de Instrucciones RECUERDA */}
+                        {isInstructionsPage && (
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-center gap-2 text-amber-600">
+                                    <AlertTriangle className="w-5 h-5" />
+                                    <h3 className="text-lg font-bold">¡RECUERDA!</h3>
+                                </div>
+                                
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
+                                    <h4 className="font-semibold text-amber-800 text-sm text-center">
+                                        CUANTIFICACIÓN DE LOS INDICADORES
+                                    </h4>
+                                    
+                                    <p className="text-xs text-gray-700 text-justify leading-relaxed">
+                                        Con el objetivo que la organización tenga una referencia del grado de desarrollo de su sostenibilidad, debe cuantificar y sumar los niveles de cada indicador.
+                                    </p>
+
+                                    <div className="bg-white rounded-md p-3 border border-amber-100">
+                                        <p className="text-xs font-semibold text-gray-800 mb-2">Instrucciones para calcular el puntaje:</p>
+                                        <p className="text-xs text-gray-600 mb-2">Para cada nivel alcanzado se asigna el siguiente puntaje:</p>
+                                        <ul className="text-xs text-gray-700 space-y-1 ml-2">
+                                            <li><span className="font-medium">Nivel 1:</span> 1 punto</li>
+                                            <li><span className="font-medium">Nivel 2:</span> 2 puntos</li>
+                                            <li><span className="font-medium">Nivel 3:</span> 3 puntos</li>
+                                        </ul>
+                                        <p className="text-xs text-gray-600 mt-2">
+                                            En caso de no alcanzar el Nivel 1 el puntaje a asignar es <span className="font-medium">0 (cero)</span>.
+                                        </p>
+                                    </div>
+
+                                    <div className="bg-white rounded-md p-3 border border-amber-100">
+                                        <p className="text-xs font-semibold text-gray-800 mb-2">Rangos de puntaje por segmento:</p>
+                                        <ul className="text-xs text-gray-700 space-y-1">
+                                            <li><span className="font-medium italic text-blue-700">Micro Bodega Turística/Artesanal:</span> 0 a 51 puntos</li>
+                                            <li><span className="font-medium italic text-blue-700">Pequeña Bodega Turística:</span> 0 a 69 puntos</li>
+                                            <li><span className="font-medium italic text-blue-700">Mediana Bodega Turística:</span> 0 a 96 puntos</li>
+                                            <li><span className="font-medium italic text-blue-700">Bodega Turística:</span> 0 a 126 puntos</li>
+                                            <li><span className="font-medium italic text-blue-700">Gran Bodega Turística:</span> 0 a 126 puntos</li>
+                                        </ul>
+                                    </div>
+
+                                    <p className="text-xs text-gray-700 text-justify leading-relaxed">
+                                        Con el puntaje obtenido, ingrese en la tabla que indica el <span className="font-medium">Nivel de Sostenibilidad</span> en que se encuentra la organización, de acuerdo a su tamaño.
+                                    </p>
+
+                                    <p className="text-xs text-gray-700 text-justify leading-relaxed">
+                                        Los niveles de sustentabilidad: <span className="font-medium">mínimo, medio y alto</span>, reflejan la situación de la organización respecto del puntaje obtenido.
+                                    </p>
+
+                                    <div className="bg-gray-100 rounded-md p-3 border border-gray-200">
+                                        <p className="text-xs text-gray-600 text-justify leading-relaxed">
+                                            <span className="font-semibold">Nota:</span> Se entiende que el &quot;Nivel Mínimo de Sostenibilidad&quot; para cada segmento se logra cuando todos los indicadores aplicables alcanzan el Nivel 1 (1 punto) y el &quot;Nivel Máximo de Sostenibilidad&quot; cuando todos los indicadores aplicables alcanzan el Nivel 3 (3 puntos).
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </div>

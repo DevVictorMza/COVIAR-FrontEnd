@@ -241,3 +241,45 @@ export interface AppConfig {
   apiUrl: string
   apiTimeout: number
 }
+
+// ============= RESULTADOS AUTOEVALUACIÓN (BACKEND) =============
+
+export interface NivelRespuestaResultado {
+  nombre: string
+  descripcion: string
+  puntos: number
+}
+
+export interface IndicadorResultado {
+  nombre: string
+  descripcion: string
+  orden: number
+  niveles_respuesta: NivelRespuestaResultado[]
+}
+
+export interface CapituloResultado {
+  nombre: string
+  orden: number
+  indicadores: IndicadorResultado[]
+}
+
+export interface ResultadosAutoevaluacionResponse {
+  bodega: {
+    nombre_fantasia: string
+  }
+  autoevaluacion: {
+    fecha_fin: string
+    puntaje_final: number
+  }
+  segmento: {
+    nombre: string
+  }
+  nivel_sustentabilidad: {
+    nombre: string
+  }
+  capitulos: CapituloResultado[]
+}
+
+export interface ResultadosAutoevaluacionError {
+  error: string
+}

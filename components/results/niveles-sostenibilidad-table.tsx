@@ -14,7 +14,7 @@ export function NivelesSostenibilidadTable({
     puntajeActual
 }: NivelesSostenibilidadTableProps) {
     const segmentos: { key: SegmentoTipo; nombre: string }[] = [
-        { key: 'micro_bodega', nombre: 'Micro Bodega Turística/ Artesanal' },
+        { key: 'micro_bodega', nombre: 'Micro Bodega Turística/Artesanal' },
         { key: 'pequena_bodega', nombre: 'Pequeña Bodega Turística' },
         { key: 'mediana_bodega', nombre: 'Mediana Bodega Turística' },
         { key: 'bodega', nombre: 'Bodega Turística' },
@@ -45,8 +45,8 @@ export function NivelesSostenibilidadTable({
                 {/* Badges de niveles */}
                 <div className="flex justify-center gap-4 py-4 bg-muted/30 border-b">
                     <Badge
-                        className="px-4 py-2 text-sm font-medium text-black"
-                        style={{ backgroundColor: '#EAB308' }}
+                        className="px-4 py-2 text-sm font-medium text-white"
+                        style={{ backgroundColor: '#84CC16' }}
                     >
                         NIVEL MÍNIMO DE SOSTENIBILIDAD
                     </Badge>
@@ -76,7 +76,7 @@ export function NivelesSostenibilidadTable({
                                 <th
                                     className="px-4 py-2 text-center font-semibold border-l"
                                     colSpan={2}
-                                    style={{ backgroundColor: '#EAB30820' }}
+                                    style={{ backgroundColor: '#84CC1620' }}
                                 >
                                     Nivel mínimo de Sostenibilidad
                                 </th>
@@ -97,8 +97,8 @@ export function NivelesSostenibilidadTable({
                             </tr>
                             {/* Segunda fila: Mínimo/Máximo */}
                             <tr className="border-b text-xs">
-                                <th className="px-3 py-2 text-center border-l" style={{ backgroundColor: '#EAB30810' }}>Mínimo</th>
-                                <th className="px-3 py-2 text-center" style={{ backgroundColor: '#EAB30810' }}>Máximo</th>
+                                <th className="px-3 py-2 text-center border-l" style={{ backgroundColor: '#84CC1610' }}>Mínimo</th>
+                                <th className="px-3 py-2 text-center" style={{ backgroundColor: '#84CC1610' }}>Máximo</th>
                                 <th className="px-3 py-2 text-center border-l" style={{ backgroundColor: '#22C55E10' }}>Mínimo</th>
                                 <th className="px-3 py-2 text-center" style={{ backgroundColor: '#22C55E10' }}>Máximo</th>
                                 <th className="px-3 py-2 text-center border-l" style={{ backgroundColor: '#15803D10' }}>Mínimo</th>
@@ -127,13 +127,13 @@ export function NivelesSostenibilidadTable({
                                         </td>
                                         {/* Nivel Mínimo */}
                                         <td
-                                            className={`px-3 py-3 text-center border-l ${nivelActual === 'minimo' ? 'bg-yellow-200 font-bold' : ''
+                                            className={`px-3 py-3 text-center border-l ${nivelActual === 'minimo' ? 'bg-lime-200 font-bold' : ''
                                                 }`}
                                         >
                                             {rangos.minimo.min}
                                         </td>
                                         <td
-                                            className={`px-3 py-3 text-center ${nivelActual === 'minimo' ? 'bg-yellow-200 font-bold' : ''
+                                            className={`px-3 py-3 text-center ${nivelActual === 'minimo' ? 'bg-lime-200 font-bold' : ''
                                                 }`}
                                         >
                                             {rangos.minimo.max}

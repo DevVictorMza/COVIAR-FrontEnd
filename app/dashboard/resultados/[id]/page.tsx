@@ -4,7 +4,15 @@ import { useEffect, useState, use } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { RefreshCw, LayoutDashboard, Info } from "lucide-react"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
+import { RefreshCw, LayoutDashboard, Info, AlertTriangle } from "lucide-react"
 import { crearAutoevaluacion } from "@/lib/api/autoevaluacion"
 import { determineSustainabilityLevel } from "@/lib/utils/scoring"
 
@@ -20,6 +28,20 @@ interface ResultadoLocal {
     porcentaje: number
     fecha_completo: string
     segmento: string
+    nombre_bodega?: string
+    responsable?: string
+}
+
+// Función para formatear fecha
+const formatearFecha = (fechaISO: string): string => {
+    const fecha = new Date(fechaISO)
+    return fecha.toLocaleDateString('es-AR', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    })
 }
 
 // Datos de referencia para la tabla de niveles
@@ -37,6 +59,7 @@ export default function ResultadoDetallePage({ params }: PageProps) {
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [isCreating, setIsCreating] = useState(false)
+    const [showConfirmModal, setShowConfirmModal] = useState(false)
 
     useEffect(() => {
         // Cargar resultado desde localStorage
@@ -44,6 +67,23 @@ export default function ResultadoDetallePage({ params }: PageProps) {
         if (storedData) {
             try {
                 const parsed = JSON.parse(storedData) as ResultadoLocal
+                
+                // Si no tiene datos de bodega/responsable, intentar obtenerlos del usuario actual
+                if (!parsed.nombre_bodega || !parsed.responsable) {
+                    const usuarioStr = localStorage.getItem('usuario')
+                    if (usuarioStr) {
+                        const usuario = JSON.parse(usuarioStr)
+                        if (!parsed.nombre_bodega) {
+                            parsed.nombre_bodega = usuario?.bodega?.nombre_fantasia || usuario?.bodega?.razon_social || 'N/A'
+                        }
+                        if (!parsed.responsable) {
+                            parsed.responsable = usuario?.responsable 
+                                ? `${usuario.responsable.nombre || ''} ${usuario.responsable.apellido || ''}`.trim() 
+                                : 'N/A'
+                        }
+                    }
+                }
+                
                 setResultado(parsed)
             } catch (e) {
                 console.error("Error al parsear resultado:", e)
@@ -56,8 +96,6 @@ export default function ResultadoDetallePage({ params }: PageProps) {
     }, [id])
 
     const handleNuevaEvaluacion = async () => {
-        if (!confirm("¿Estás seguro de que deseas comenzar una nueva evaluación?")) return
-
         setIsCreating(true)
         try {
             const usuarioStr = localStorage.getItem('usuario')
@@ -79,6 +117,7 @@ export default function ResultadoDetallePage({ params }: PageProps) {
             alert('Error al iniciar nueva evaluación')
         } finally {
             setIsCreating(false)
+            setShowConfirmModal(false)
         }
     }
 
@@ -112,6 +151,34 @@ export default function ResultadoDetallePage({ params }: PageProps) {
 
     return (
         <div className="p-8 space-y-8 max-w-6xl mx-auto">
+            {/* Encabezado con información de la evaluación */}
+            <div className="bg-gradient-to-r from-[#8B1E2F]/5 to-[#B89B5E]/5 rounded-xl p-6 border border-[#8B1E2F]/10">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div className="space-y-1">
+                        <h1 className="text-2xl font-bold text-gray-900">
+                            {resultado.nombre_bodega || 'Bodega'}
+                        </h1>
+                        <p className="text-gray-600">
+                            Segmento: <span className="font-medium">{resultado.segmento}</span>
+                        </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-4 text-sm">
+                        <div className="flex items-center gap-2 text-gray-600">
+                            <svg className="h-4 w-4 text-[#8B1E2F]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <span>Responsable: <span className="font-medium text-gray-900">{resultado.responsable || 'N/A'}</span></span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-600">
+                            <svg className="h-4 w-4 text-[#8B1E2F]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span>Fecha: <span className="font-medium text-gray-900">{formatearFecha(resultado.fecha_completo)}</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* Tarjeta de Puntuación Principal */}
             <Card className="overflow-hidden border-2 border-primary/10 shadow-lg">
                 <CardContent className="p-0">
@@ -164,9 +231,9 @@ export default function ResultadoDetallePage({ params }: PageProps) {
 
                 <Button
                     variant="outline"
-                    onClick={handleNuevaEvaluacion}
+                    onClick={() => setShowConfirmModal(true)}
                     disabled={isCreating}
-                    className="border-[#8B1E2F] text-[#8B1E2F] hover:bg-[#8B1E2F]/5 px-8 h-12 text-base font-medium rounded-md shadow-sm min-w-[200px]"
+                    className="border-[#8B1E2F] text-[#8B1E2F] hover:bg-[#8B1E2F]/5 hover:text-[#8B1E2F] px-8 h-12 text-base font-medium rounded-md shadow-sm min-w-[200px]"
                 >
                     <RefreshCw className={`mr-2 h-5 w-5 ${isCreating ? 'animate-spin' : ''}`} />
                     Realizar nueva evaluación
@@ -262,6 +329,48 @@ export default function ResultadoDetallePage({ params }: PageProps) {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Modal de Confirmación */}
+            <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader className="space-y-4">
+                        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100">
+                            <AlertTriangle className="h-7 w-7 text-amber-600" />
+                        </div>
+                        <DialogTitle className="text-center text-xl font-semibold">
+                            ¿Iniciar nueva evaluación?
+                        </DialogTitle>
+                        <DialogDescription className="text-center text-gray-600">
+                            Estás a punto de comenzar una nueva autoevaluación de sostenibilidad. 
+                            Esta acción creará un nuevo registro de evaluación para tu bodega.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-center gap-3 mt-6">
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowConfirmModal(false)}
+                            disabled={isCreating}
+                            className="px-6"
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={handleNuevaEvaluacion}
+                            disabled={isCreating}
+                            className="bg-[#8B1E2F] hover:bg-[#6D1A1A] text-white px-6"
+                        >
+                            {isCreating ? (
+                                <>
+                                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                                    Iniciando...
+                                </>
+                            ) : (
+                                "Sí, comenzar"
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

@@ -11,15 +11,31 @@ export interface RespuestasMap {
 }
 
 /**
- * Niveles de sostenibilidad basados en porcentaje
+ * Niveles de sostenibilidad oficiales COVIAR
+ * Colores basados en la guía institucional
  */
 export const NIVELES_SOSTENIBILIDAD = [
-    { min: 0, max: 25, nombre: 'Inicial', color: '#ef4444', descripcion: 'Recién comenzando el camino de sostenibilidad' },
-    { min: 25, max: 50, nombre: 'En Desarrollo', color: '#f97316', descripcion: 'Avanzando con oportunidades de mejora' },
-    { min: 50, max: 75, nombre: 'Consolidado', color: '#eab308', descripcion: 'Prácticas sostenibles establecidas' },
-    { min: 75, max: 90, nombre: 'Avanzado', color: '#22c55e', descripcion: 'Alto nivel de sostenibilidad' },
-    { min: 90, max: 100, nombre: 'Ejemplar', color: '#10b981', descripcion: 'Referente en sostenibilidad enoturística' },
+    { key: 'minimo', nombre: 'Nivel Mínimo de Sostenibilidad', color: '#84CC16', descripcion: 'Cumple con los requisitos mínimos de sostenibilidad' },
+    { key: 'medio', nombre: 'Nivel Medio de Sostenibilidad', color: '#22C55E', descripcion: 'Buenas prácticas de sostenibilidad implementadas' },
+    { key: 'alto', nombre: 'Nivel Alto de Sostenibilidad', color: '#15803D', descripcion: 'Excelencia en sostenibilidad enoturística' },
 ]
+
+/**
+ * Mapea el nombre del nivel del backend al nivel oficial con su color
+ */
+export function getNivelSostenibilidadInfo(nombreBackend: string): { nombre: string; color: string; key: string } {
+    const nombreLower = nombreBackend.toLowerCase()
+    
+    // Mapear variantes del backend a los niveles oficiales
+    if (nombreLower.includes('alto') || nombreLower.includes('avanzado') || nombreLower.includes('ejemplar')) {
+        return { ...NIVELES_SOSTENIBILIDAD[2], key: 'alto' }
+    }
+    if (nombreLower.includes('medio') || nombreLower.includes('intermedio') || nombreLower.includes('consolidado')) {
+        return { ...NIVELES_SOSTENIBILIDAD[1], key: 'medio' }
+    }
+    // Por defecto: nivel mínimo (incluye 'mínimo', 'inicial', 'en desarrollo', etc.)
+    return { ...NIVELES_SOSTENIBILIDAD[0], key: 'minimo' }
+}
 
 export interface NivelSostenibilidad {
     nombre: string
@@ -186,15 +202,16 @@ export function calculateChaptersProgress(
 
 /**
  * Determina el nivel de sostenibilidad basado en el porcentaje
+ * Mapea a los 3 niveles oficiales COVIAR
  */
 export function determineSustainabilityLevel(porcentaje: number): typeof NIVELES_SOSTENIBILIDAD[0] {
-    for (const nivel of NIVELES_SOSTENIBILIDAD) {
-        if (porcentaje >= nivel.min && porcentaje < nivel.max) {
-            return nivel
-        }
+    if (porcentaje >= 75) {
+        return NIVELES_SOSTENIBILIDAD[2] // Alto
     }
-    // Si es 100%, retornar el último nivel
-    return NIVELES_SOSTENIBILIDAD[NIVELES_SOSTENIBILIDAD.length - 1]
+    if (porcentaje >= 50) {
+        return NIVELES_SOSTENIBILIDAD[1] // Medio
+    }
+    return NIVELES_SOSTENIBILIDAD[0] // Mínimo
 }
 
 /**
@@ -243,28 +260,13 @@ export function determineLevelByScoreAndSegment(score: number, segmentName: stri
     const rangos = RANGOS_POR_SEGMENTO[segmentKey]
 
     if (score >= rangos.alto.min) {
-        return {
-            nombre: 'Nivel Alto de Sostenibilidad',
-            color: '#15803D', // green-700
-            descripcion: 'Cumple con los estándares más exigentes de sostenibilidad.'
-        }
+        return NIVELES_SOSTENIBILIDAD[2] // Nivel Alto
     }
 
     if (score >= rangos.medio.min) {
-        return {
-            nombre: 'Nivel Medio de Sostenibilidad',
-            color: '#22C55E', // green-500
-            descripcion: 'Buen desempeño con oportunidades de mejora para alcanzar la excelencia.'
-        }
+        return NIVELES_SOSTENIBILIDAD[1] // Nivel Medio
     }
 
-    // Por defecto o si es menor al mínimo (aunque técnicamente el rango empieza en X)
-    // Si es menor al mínimo del rango "minimo", igual lo consideramos nivel mínimo o "insuficiente"?
-    // Basado en la tabla, el nivel mínimo va de X a Y. Asumimos que todo lo debajo de Y (hasta 0) cae en esta categoría o inferior.
-    // Para simplificar y seguir la UI requerida (solo 3 niveles), usaremos Nivel Mínimo.
-    return {
-        nombre: 'Nivel Mínimo de Sostenibilidad',
-        color: '#EAB308', // yellow-500
-        descripcion: 'Cumple con los requisitos básicos, se recomienda implementar mejoras.'
-    }
+    // Nivel Mínimo (incluye puntajes por debajo del rango mínimo)
+    return NIVELES_SOSTENIBILIDAD[0]
 }

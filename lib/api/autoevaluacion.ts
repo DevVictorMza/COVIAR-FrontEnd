@@ -1,6 +1,6 @@
 // lib/api/autoevaluacion.ts
 
-import type { EstructuraAutoevaluacionResponse, Segmento, CrearAutoevaluacionResponse, RespuestaIndicador, AutoevaluacionHistorial, ResultadoDetallado } from './types'
+import type { EstructuraAutoevaluacionResponse, Segmento, CrearAutoevaluacionResponse, RespuestaIndicador, AutoevaluacionHistorial, ResultadoDetallado, ResultadosAutoevaluacionResponse } from './types'
 
 /**
  * Servicios de API para autoevaluaciones
@@ -257,5 +257,29 @@ export async function obtenerResultadosAutoevaluacion(
     }
 
     return data as ResultadoDetallado
+}
+
+/**
+ * Obtiene los resultados de autoevaluación de una bodega
+ * @param idBodega - ID de la bodega
+ * @returns Resultados de autoevaluación o null si no hay evaluación completada
+ */
+export async function obtenerResultadosBodega(
+    idBodega: number
+): Promise<ResultadosAutoevaluacionResponse | null> {
+    const response = await fetch(`/api/bodegas/${idBodega}/resultados-autoevaluacion`, {
+        method: 'GET',
+        headers: getAuthHeaders(),
+        credentials: 'include',
+    })
+
+    const data = await response.json().catch(() => ({}))
+
+    // Si el backend devuelve error de recurso no encontrado
+    if (!response.ok || data?.error) {
+        return null
+    }
+
+    return data as ResultadosAutoevaluacionResponse
 }
 
