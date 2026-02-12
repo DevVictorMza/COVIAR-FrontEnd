@@ -1,6 +1,6 @@
 // lib/api/autoevaluacion.ts
 
-import type { EstructuraAutoevaluacionResponse, Segmento, CrearAutoevaluacionResponse, RespuestaIndicador, AutoevaluacionHistorial, ResultadoDetallado, ResultadosAutoevaluacionResponse } from './types'
+import type { EstructuraAutoevaluacionResponse, Segmento, CrearAutoevaluacionResponse, RespuestaIndicador, RespuestaGuardada, AutoevaluacionHistorial, ResultadoDetallado, ResultadosAutoevaluacionResponse, EvidenciaResponse, Evidencia } from './types'
 
 /**
  * Servicios de API para autoevaluaciones
@@ -130,7 +130,7 @@ export async function seleccionarSegmento(
 export async function guardarRespuestas(
     idAutoevaluacion: string | number,
     respuestas: RespuestaIndicador[]
-): Promise<void> {
+): Promise<RespuestaGuardada[]> {
     const response = await fetch(`/api/autoevaluaciones/${idAutoevaluacion}/respuestas`, {
         method: 'POST',
         headers: getAuthHeaders(),
@@ -143,19 +143,23 @@ export async function guardarRespuestas(
     if (!response.ok) {
         throw new Error(data?.message || `Error ${response.status}: ${response.statusText}`)
     }
+
+    // Formato confirmado: { mensaje, respuestas: [{ id_respuesta, id_nivel_respuesta, id_indicador, id_autoevaluacion }] }
+    if (data?.respuestas && Array.isArray(data.respuestas)) {
+        return data.respuestas as RespuestaGuardada[]
+    }
+    return []
 }
 
 /**
- * Guarda una sola respuesta de la autoevaluación
- * @param idAutoevaluacion - ID de la autoevaluación
- * @param idIndicador - ID del indicador
- * @param idNivelRespuesta - ID del nivel de respuesta seleccionado
+ * Guarda una sola respuesta y retorna la respuesta guardada con id_respuesta
+ * Usado como fallback para obtener el id_respuesta cuando no se capturó del POST masivo
  */
-export async function guardarRespuesta(
+export async function guardarRespuestaIndividual(
     idAutoevaluacion: string | number,
     idIndicador: number,
     idNivelRespuesta: number
-): Promise<void> {
+): Promise<RespuestaGuardada | null> {
     const response = await fetch(`/api/autoevaluaciones/${idAutoevaluacion}/respuestas`, {
         method: 'POST',
         headers: getAuthHeaders(),
@@ -171,8 +175,15 @@ export async function guardarRespuesta(
     const data = await response.json().catch(() => ({}))
 
     if (!response.ok) {
-        throw new Error(data?.message || `Error ${response.status}: ${response.statusText}`)
+        console.warn('guardarRespuestaIndividual: Error', response.status, data)
+        return null
     }
+
+    // Formato confirmado: { mensaje, respuestas: [{ id_respuesta, ... }] }
+    if (data?.respuestas?.[0]?.id_respuesta != null) {
+        return data.respuestas[0] as RespuestaGuardada
+    }
+    return null
 }
 
 /**
@@ -281,5 +292,184 @@ export async function obtenerResultadosBodega(
     }
 
     return data as ResultadosAutoevaluacionResponse
+}
+
+// ============= EVIDENCIAS =============
+
+/** Tamaño máximo permitido para archivos de evidencia (2 MB) */
+export const MAX_EVIDENCE_FILE_SIZE = 2 * 1024 * 1024
+
+/**
+ * Sube un archivo PDF de evidencia para una respuesta
+ * @param idAutoevaluacion - ID de la autoevaluación
+ * @param idRespuesta - ID de la respuesta (devuelto por el backend al guardar)
+ * @param archivo - Archivo PDF a subir (máximo 2 MB)
+ * @returns Respuesta con la evidencia creada
+ * @throws Error si el archivo excede el tamaño máximo o no es PDF
+ */
+export async function subirEvidencia(
+    idAutoevaluacion: string | number,
+    idRespuesta: number,
+    archivo: File
+): Promise<EvidenciaResponse> {
+    // Validación de tipo
+    if (archivo.type !== 'application/pdf') {
+        throw new Error('Solo se permiten archivos en formato PDF')
+    }
+
+    // Validación de tamaño (2 MB)
+    if (archivo.size > MAX_EVIDENCE_FILE_SIZE) {
+        const sizeMB = (archivo.size / (1024 * 1024)).toFixed(2)
+        throw new Error(`El archivo excede el tamaño máximo permitido de 2 MB (${sizeMB} MB)`)
+    }
+
+    const formData = new FormData()
+    formData.append('file', archivo, archivo.name)
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    const headers: HeadersInit = {}
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+    }
+    // No setear Content-Type: el navegador lo genera con el boundary correcto
+
+    const url = `/api/autoevaluaciones/${idAutoevaluacion}/respuestas/${idRespuesta}/evidencias`
+    console.log(`subirEvidencia: POST ${url} (archivo: ${archivo.name}, ${(archivo.size / 1024).toFixed(1)} KB)`)
+
+    const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: formData,
+    })
+
+    const data = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+        console.error('subirEvidencia: Error', response.status, JSON.stringify(data))
+        throw new Error(data?.message || data?.error || `Error ${response.status}: ${response.statusText}`)
+    }
+
+    console.log('subirEvidencia: Éxito', JSON.stringify(data))
+    return data as EvidenciaResponse
+}
+
+/**
+ * Obtiene las evidencias de una respuesta específica
+ * @param idAutoevaluacion - ID de la autoevaluación
+ * @param idRespuesta - ID de la respuesta
+ * @returns Evidencia de la respuesta o null si no existe
+ */
+export async function obtenerEvidencia(
+    idAutoevaluacion: string | number,
+    idRespuesta: number
+): Promise<Evidencia | null> {
+    const response = await fetch(
+        `/api/autoevaluaciones/${idAutoevaluacion}/respuestas/${idRespuesta}/evidencias`,
+        {
+            method: 'GET',
+            headers: getAuthHeaders(),
+            credentials: 'include',
+        }
+    )
+
+    const data = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+        if (response.status === 404) return null
+        throw new Error(data?.message || `Error ${response.status}: ${response.statusText}`)
+    }
+
+    // La API puede devolver un objeto con evidencia o un array
+    if (data.evidencia) return data.evidencia as Evidencia
+    if (Array.isArray(data.evidencias) && data.evidencias.length > 0) return data.evidencias[0] as Evidencia
+    return data as Evidencia
+}
+
+/**
+ * Elimina la evidencia de una respuesta
+ * @param idAutoevaluacion - ID de la autoevaluación
+ * @param idRespuesta - ID de la respuesta
+ */
+export async function eliminarEvidencia(
+    idAutoevaluacion: string | number,
+    idRespuesta: number
+): Promise<void> {
+    const response = await fetch(
+        `/api/autoevaluaciones/${idAutoevaluacion}/respuestas/${idRespuesta}/evidencias`,
+        {
+            method: 'DELETE',
+            headers: getAuthHeaders(),
+            credentials: 'include',
+        }
+    )
+
+    const data = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+        throw new Error(data?.message || `Error ${response.status}: ${response.statusText}`)
+    }
+}
+
+/**
+ * Descarga el archivo PDF de evidencia de una respuesta
+ * @param idAutoevaluacion - ID de la autoevaluación
+ * @param idRespuesta - ID de la respuesta
+ * @returns Abre el archivo PDF en una nueva pestaña o inicia descarga según el navegador
+ */
+export async function descargarEvidencia(
+    idAutoevaluacion: string | number,
+    idRespuesta: number
+): Promise<void> {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    const headers: HeadersInit = {}
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+    }
+
+    const url = `/api/autoevaluaciones/${idAutoevaluacion}/respuestas/${idRespuesta}/evidencia/descargar`
+    console.log(`descargarEvidencia: GET ${url}`)
+
+    const response = await fetch(url, {
+        method: 'GET',
+        headers,
+        credentials: 'include',
+    })
+
+    if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        console.error('descargarEvidencia: Error', response.status, JSON.stringify(data))
+        throw new Error(data?.message || `Error ${response.status}: No se pudo descargar la evidencia`)
+    }
+
+    // Obtener el blob del archivo
+    const blob = await response.blob()
+    
+    // Crear URL temporal para el blob
+    const blobUrl = window.URL.createObjectURL(blob)
+    
+    // Obtener nombre del archivo del header Content-Disposition
+    const contentDisposition = response.headers.get('Content-Disposition')
+    let filename = `evidencia_${idRespuesta}.pdf`
+    
+    if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+        if (filenameMatch && filenameMatch[1]) {
+            filename = filenameMatch[1].replace(/['"]/g, '')
+        }
+    }
+    
+    // Crear link temporal y hacer click para iniciar descarga
+    const link = document.createElement('a')
+    link.href = blobUrl
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    // Limpiar el URL temporal
+    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 100)
+    
+    console.log('descargarEvidencia: Descarga iniciada', filename)
 }
 

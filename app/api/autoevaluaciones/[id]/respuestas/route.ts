@@ -50,7 +50,6 @@ export async function POST(
             )
         }
 
-        console.log('Proxy: Respuestas guardadas exitosamente')
         return NextResponse.json(data)
     } catch (error) {
         console.error('Proxy: Error de conexión:', error)

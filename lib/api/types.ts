@@ -117,6 +117,7 @@ export interface AutoevaluacionPendiente {
 }
 
 export interface RespuestaGuardada {
+  id_respuesta?: number
   id_indicador: number
   id_nivel_respuesta: number
 }
@@ -180,6 +181,10 @@ export interface IndicadorConRespuesta {
     puntos: number
   } | null
   puntaje_maximo: number
+  // Campos de evidencia
+  id_respuesta?: number | null
+  tiene_evidencia?: boolean
+  nombre_archivo_evidencia?: string | null
 }
 
 // Capítulo con indicadores y respuestas para resultados detallados
@@ -302,4 +307,26 @@ export interface ResultadosAutoevaluacionResponse {
 
 export interface ResultadosAutoevaluacionError {
   error: string
+}
+
+// ============= EVIDENCIAS =============
+
+export interface Evidencia {
+  id_evidencia: number
+  id_autoevaluacion: number
+  id_indicador: number
+  nombre_archivo: string
+  tipo_archivo: string
+  tamano: number
+  fecha_subida: string
+  url?: string
+}
+
+export interface EvidenciaResponse {
+  evidencia: Evidencia
+  mensaje: string
+}
+
+export interface EvidenciasListResponse {
+  evidencias: Evidencia[]
 }

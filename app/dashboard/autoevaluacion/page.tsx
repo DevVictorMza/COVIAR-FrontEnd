@@ -14,6 +14,7 @@ import {
   obtenerSegmentos,
   seleccionarSegmento,
   guardarRespuestas,
+  guardarRespuestaIndividual,
   completarAutoevaluacion,
   cancelarAutoevaluacion
 } from "@/lib/api/autoevaluacion"
@@ -29,6 +30,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { SegmentConfirmationModal } from "@/components/autoevaluacion/segment-confirmation-modal"
+import { EvidenciaUpload } from "@/components/autoevaluacion/evidencia-upload"
 
 export default function AutoevaluacionPage() {
   const router = useRouter()
@@ -65,7 +67,13 @@ export default function AutoevaluacionPage() {
     tieneSegmento: boolean
     cantidadRespuestas: number
   } | null>(null)
-  const [savedResponses, setSavedResponses] = useState<Array<{ id_indicador: number, id_nivel_respuesta: number }>>([])
+  const [savedResponses, setSavedResponses] = useState<Array<{ id_respuesta?: number, id_indicador: number, id_nivel_respuesta: number }>>([])
+
+  // Estado para evidencias cargadas (id_indicador -> nombre_archivo)
+  const [evidencias, setEvidencias] = useState<Record<number, string | null>>({})
+
+  // Estado para mapeo de id_indicador -> id_respuesta (del backend)
+  const [respuestaIds, setRespuestaIds] = useState<Record<number, number>>({})
 
 
   // Obtener usuario e id_bodega
@@ -199,8 +207,13 @@ export default function AutoevaluacionPage() {
 
           // Primero, eliminar duplicados de la API (tomar la última ocurrencia)
           const uniqueResponses = new Map<number, number>()
+          const respuestaIdMap: Record<number, number> = {}
           savedResponses.forEach(r => {
             uniqueResponses.set(r.id_indicador, r.id_nivel_respuesta)
+            // Capturar id_respuesta si viene del backend
+            if (r.id_respuesta) {
+              respuestaIdMap[r.id_indicador] = r.id_respuesta
+            }
           })
 
           if (savedResponses.length !== uniqueResponses.size) {
@@ -226,6 +239,11 @@ export default function AutoevaluacionPage() {
           })
           setResponses(responsesMap)
           setResponsesForApi(apiResponsesMap)
+          // Cargar mapeo de id_respuesta si está disponible
+          if (Object.keys(respuestaIdMap).length > 0) {
+            setRespuestaIds(respuestaIdMap)
+            console.log('Mapeo id_indicador -> id_respuesta cargado:', respuestaIdMap)
+          }
           console.log(`✅ Cargadas ${Object.keys(apiResponsesMap).length} respuestas guardadas (únicas)`)
         }
 
@@ -333,8 +351,45 @@ export default function AutoevaluacionPage() {
     savingCount.current++
     setIsSaving(true)
     try {
-      await guardarRespuestas(assessmentId, respuestasArray)
+      const respuestasGuardadas = await guardarRespuestas(assessmentId, respuestasArray)
       console.log(`✅ Guardadas ${respuestasArray.length} respuestas exitosamente`)
+
+      // Capturar los id_respuesta devueltos por el backend
+      let idsUpdated = false
+      const newRespuestaIds: Record<number, number> = { ...respuestaIds }
+
+      if (respuestasGuardadas && respuestasGuardadas.length > 0) {
+        respuestasGuardadas.forEach(r => {
+          if (r.id_respuesta != null && r.id_indicador) {
+            newRespuestaIds[r.id_indicador] = r.id_respuesta
+            idsUpdated = true
+          }
+        })
+      }
+
+      // Fallback: si guardarRespuestas no devolvió IDs, intentar POST individual para el indicador actual
+      if (!idsUpdated) {
+        console.log('⚠️ guardarRespuestas no devolvió id_respuesta, intentando POST individual...')
+        try {
+          const result = await guardarRespuestaIndividual(
+            assessmentId,
+            indicador.indicador.id_indicador,
+            newNivelId
+          )
+          if (result?.id_respuesta != null) {
+            newRespuestaIds[indicador.indicador.id_indicador] = result.id_respuesta
+            idsUpdated = true
+            console.log(`Resuelto id_respuesta=${result.id_respuesta} para indicador ${indicador.indicador.id_indicador}`)
+          }
+        } catch (e) {
+          console.warn('No se pudo obtener id_respuesta vía POST individual:', e)
+        }
+      }
+
+      if (idsUpdated) {
+        setRespuestaIds(newRespuestaIds)
+        console.log('Mapeo id_indicador -> id_respuesta actualizado:', newRespuestaIds)
+      }
     } catch (error) {
       console.error('❌ Error al guardar respuestas:', error)
     } finally {
@@ -486,7 +541,7 @@ export default function AutoevaluacionPage() {
       // Usamos calculateChapterScoresWithResponses para incluir los indicadores y respuestas detalladas
       const ultimoResultado = {
         ...resultData,
-        capitulos: calculateChapterScoresWithResponses(responsesForScoring, estructura),
+        capitulos: calculateChapterScoresWithResponses(responsesForScoring, estructura, evidencias, respuestaIds),
         nivel_sostenibilidad: nivelCalculado.nombre
       }
       localStorage.setItem('ultimo_resultado_completado', JSON.stringify(ultimoResultado))
@@ -710,6 +765,23 @@ export default function AutoevaluacionPage() {
                         </div>
                       ))}
                     </RadioGroup>
+
+                    {/* Botón de carga de evidencia PDF - solo visible si hay respuesta seleccionada */}
+                    {assessmentId && savedValue !== undefined && (
+                      <EvidenciaUpload
+                        idAutoevaluacion={assessmentId}
+                        idIndicador={indicadorWrapper.indicador.id_indicador}
+                        idRespuesta={respuestaIds[indicadorWrapper.indicador.id_indicador] || null}
+                        idNivelRespuesta={responsesForApi[indicadorWrapper.indicador.id_indicador] || null}
+                        archivoExistente={evidencias[indicadorWrapper.indicador.id_indicador] || null}
+                        onEvidenciaChange={(idInd, nombre) => {
+                          setEvidencias(prev => ({ ...prev, [idInd]: nombre }))
+                        }}
+                        onIdRespuestaResolved={(idInd, idResp) => {
+                          setRespuestaIds(prev => ({ ...prev, [idInd]: idResp }))
+                        }}
+                      />
+                    )}
                   </CardContent>
                 </Card>
               )

@@ -19,10 +19,13 @@ import {
     Plus,
     ChevronDown,
     ChevronUp,
-    AlertCircle
+    AlertCircle,
+    Download,
+    FileX
 } from "lucide-react"
 import { NivelesSostenibilidadTable } from "@/components/results/niveles-sostenibilidad-table"
 import { getNivelSostenibilidadInfo } from "@/lib/utils/scoring"
+import { descargarEvidencia } from "@/lib/api/autoevaluacion"
 import type { SegmentoTipo } from "@/lib/utils/scoring"
 import type { CapituloResultado } from "@/lib/api/types"
 
@@ -219,11 +222,28 @@ interface CapituloLocalConIndicadores {
 }
 
 // Componente de tarjeta de capítulo para datos locales - EXPANDIBLE
-function LocalChapterCard({ capitulo }: { capitulo: CapituloLocalConIndicadores }) {
+function LocalChapterCard({ capitulo, idAutoevaluacion }: { capitulo: CapituloLocalConIndicadores; idAutoevaluacion: string }) {
     const [isExpanded, setIsExpanded] = useState(false)
+    const [downloadingIds, setDownloadingIds] = useState<Set<number>>(new Set())
     const color = getChapterColor(capitulo.nombre)
     const icon = getChapterIcon(capitulo.nombre)
     const hasIndicadores = capitulo.indicadores && capitulo.indicadores.length > 0
+
+    const handleDescargarEvidencia = async (idIndicador: number, idRespuesta: number) => {
+        setDownloadingIds(prev => new Set(prev).add(idIndicador))
+        try {
+            await descargarEvidencia(idAutoevaluacion, idRespuesta)
+        } catch (error) {
+            console.error('Error al descargar evidencia:', error)
+            alert(error instanceof Error ? error.message : 'Error al descargar la evidencia')
+        } finally {
+            setDownloadingIds(prev => {
+                const newSet = new Set(prev)
+                newSet.delete(idIndicador)
+                return newSet
+            })
+        }
+    }
 
     return (
         <Card
@@ -325,6 +345,33 @@ function LocalChapterCard({ capitulo }: { capitulo: CapituloLocalConIndicadores 
                                         )}
                                     </div>
                                 )}
+                                
+                                {/* Sección de Evidencias */}
+                                <div className="mt-3">
+                                    {indicador.tiene_evidencia && indicador.id_respuesta ? (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleDescargarEvidencia(indicador.id_indicador, indicador.id_respuesta!)}
+                                            disabled={downloadingIds.has(indicador.id_indicador)}
+                                            className="gap-2 text-sm"
+                                        >
+                                            <Download className="h-4 w-4" />
+                                            {downloadingIds.has(indicador.id_indicador) 
+                                                ? 'Descargando...' 
+                                                : 'Descargar Evidencia (PDF)'}
+                                        </Button>
+                                    ) : (
+                                        <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 border border-dashed border-muted-foreground/30">
+                                            <FileX className="h-4 w-4 text-muted-foreground" />
+                                            <span className="text-sm text-muted-foreground italic">
+                                                Evidencia no disponible
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                                
                                 {!indicador.respuesta && (
                                     <div className="mt-3 p-3 rounded-md bg-muted/50 border border-dashed">
                                         <p className="text-sm text-muted-foreground italic">
@@ -346,7 +393,7 @@ function EmptyState() {
     return (
         <div className="p-8 space-y-8">
             <div>
-                <h1 className="text-3xl font-bold">Resultados de Autoevaluación</h1>
+                <h1 className="text-3xl font-bold">Resultados de la última Autoevaluación</h1>
                 <p className="text-muted-foreground mt-1">
                     Análisis detallado de tu evaluación de sostenibilidad enoturística
                 </p>
@@ -389,7 +436,7 @@ function ErrorState({ message }: { message: string }) {
     return (
         <div className="p-8 space-y-8">
             <div>
-                <h1 className="text-3xl font-bold">Resultados de Autoevaluación</h1>
+                <h1 className="text-3xl font-bold">Resultados de la última Autoevaluación</h1>
                 <p className="text-muted-foreground mt-1">
                     Análisis detallado de tu evaluación de sostenibilidad enoturística
                 </p>
@@ -497,33 +544,61 @@ export default function ResultadosPage() {
     return (
         <div className="p-8 space-y-8 max-w-6xl mx-auto">
             {/* Header con información de la bodega */}
-            <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-base">
-                    <div className="flex items-center gap-2">
-                        <Building2 className="h-5 w-5 text-[#880D1E]" />
-                        <span className="font-semibold text-gray-800">{resultadoLocal.nombre_bodega || 'N/A'}</span>
+            <div className="space-y-6">
+                {/* Info Cards Premium */}
+                <div className="flex flex-wrap items-center gap-4">
+                    {/* Bodega Card */}
+                    <div className="group relative">
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#880D1E] to-[#a81028] rounded-lg blur opacity-25 group-hover:opacity-40 transition duration-300"></div>
+                        <div className="relative flex items-center gap-3 px-5 py-3 bg-gradient-to-br from-[#880D1E] to-[#6d0a18] rounded-lg shadow-lg hover:shadow-xl transition-all duration-300">
+                            <div className="p-2 bg-white/10 rounded-md backdrop-blur-sm">
+                                <Building2 className="h-5 w-5 text-white" />
+                            </div>
+                            <span className="font-bold text-white text-base tracking-wide">{resultadoLocal.nombre_bodega || 'N/A'}</span>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Calendar className="h-5 w-5 text-[#880D1E]" />
-                        <span className="text-gray-600">{formatDate(resultadoLocal.fecha_completo)}</span>
+
+                    {/* Fecha Card */}
+                    <div className="group relative">
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#B89B5E] to-[#d4b76f] rounded-lg blur opacity-20 group-hover:opacity-35 transition duration-300"></div>
+                        <div className="relative flex items-center gap-3 px-5 py-3 bg-white border-2 border-[#B89B5E]/30 rounded-lg shadow-md hover:shadow-lg hover:border-[#B89B5E]/50 transition-all duration-300">
+                            <div className="p-2 bg-gradient-to-br from-[#B89B5E]/10 to-[#B89B5E]/5 rounded-md">
+                                <Calendar className="h-5 w-5 text-[#B89B5E]" />
+                            </div>
+                            <span className="font-semibold text-gray-700">{formatDate(resultadoLocal.fecha_completo)}</span>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Users className="h-5 w-5 text-[#880D1E]" />
-                        <span className="text-gray-600">Responsable: <span className="font-medium text-gray-800">{resultadoLocal.responsable || 'N/A'}</span></span>
+
+                    {/* Responsable Card */}
+                    <div className="group relative">
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#B89B5E] to-[#d4b76f] rounded-lg blur opacity-20 group-hover:opacity-35 transition duration-300"></div>
+                        <div className="relative flex items-center gap-3 px-5 py-3 bg-white border-2 border-[#B89B5E]/30 rounded-lg shadow-md hover:shadow-lg hover:border-[#B89B5E]/50 transition-all duration-300">
+                            <div className="p-2 bg-gradient-to-br from-[#B89B5E]/10 to-[#B89B5E]/5 rounded-md">
+                                <Users className="h-5 w-5 text-[#B89B5E]" />
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm text-gray-500">Responsable:</span>
+                                <span className="font-bold text-gray-800">{resultadoLocal.responsable || 'N/A'}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <h1 className="text-3xl font-bold text-foreground">
-                    Resultados de Autoevaluación
-                </h1>
-                <p className="text-muted-foreground">
-                    Informe detallado de sostenibilidad enoturística
-                </p>
+
+                {/* Títulos */}
+                <div className="space-y-2 pt-2">
+                    <h1 className="text-3xl font-bold text-foreground">
+                        Resultados de la última Autoevaluación
+                    </h1>
+                    <p className="text-muted-foreground">
+                        Informe detallado de sostenibilidad enoturística
+                    </p>
+                </div>
             </div>
 
             {/* Tarjetas de resumen */}
             <div className="grid gap-4 md:grid-cols-3">
                 {/* Puntaje Final */}
-                <Card className="relative overflow-hidden">
+                <Card className="relative overflow-hidden border-2 border-[#880D1E]/20 shadow-sm">
                     <div
                         className="absolute inset-0 opacity-5"
                         style={{
@@ -554,7 +629,7 @@ export default function ResultadosPage() {
                 </Card>
 
                 {/* Nivel de Sustentabilidad */}
-                <Card className="relative overflow-hidden">
+                <Card className="relative overflow-hidden border-2 shadow-sm" style={{ borderColor: `${nivelInfo.color}30` }}>
                     <div
                         className="absolute inset-0 opacity-5"
                         style={{
@@ -585,7 +660,7 @@ export default function ResultadosPage() {
                 </Card>
 
                 {/* Segmento */}
-                <Card className="relative overflow-hidden">
+                <Card className="relative overflow-hidden border-2 border-[#B89B5E]/20 shadow-sm">
                     <div
                         className="absolute inset-0 opacity-5"
                         style={{
@@ -627,7 +702,11 @@ export default function ResultadosPage() {
 
                 <div className="space-y-4">
                     {resultadoLocal.capitulos.map((capitulo, index) => (
-                            <LocalChapterCard key={capitulo.id_capitulo || index} capitulo={capitulo} />
+                            <LocalChapterCard 
+                                key={capitulo.id_capitulo || index} 
+                                capitulo={capitulo} 
+                                idAutoevaluacion={resultadoLocal.assessmentId}
+                            />
                         ))}
                 </div>
             </div>

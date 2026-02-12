@@ -172,12 +172,18 @@ export function calculateChapterScores(
 }
 
 /**
- * Calcula puntajes por capítulo INCLUYENDO indicadores con sus respuestas
- * Esta versión extendida incluye el detalle de cada indicador y la respuesta seleccionada
+ * Calcula puntajes por capítulo INCLUYENDO indicadores con sus respuestas y evidencias
+ * Esta versión extendida incluye el detalle de cada indicador, la respuesta seleccionada y evidencias
+ * @param responses - Mapa de respuestas (id_indicador -> puntos)
+ * @param estructura - Estructura de la autoevaluación
+ * @param evidencias - Mapa de evidencias (id_indicador -> nombre_archivo | null)
+ * @param respuestaIds - Mapa de IDs de respuesta (id_indicador -> id_respuesta)
  */
 export function calculateChapterScoresWithResponses(
     responses: RespuestasMap,
-    estructura: CapituloEstructura[]
+    estructura: CapituloEstructura[],
+    evidencias?: Record<number, string | null>,
+    respuestaIds?: Record<number, number>
 ): ResultadoCapituloConIndicadores[] {
     return estructura.map(capitulo => {
         const indicadoresHabilitados = capitulo.indicadores.filter(ind => ind.habilitado !== false)
@@ -205,13 +211,22 @@ export function calculateChapterScoresWithResponses(
                 indicadoresCompletados++
             }
 
+            // Obtener información de evidencia
+            const idIndicador = indicador.indicador.id_indicador
+            const nombreArchivo = evidencias?.[idIndicador]
+            const idRespuesta = respuestaIds?.[idIndicador]
+
             return {
-                id_indicador: indicador.indicador.id_indicador,
+                id_indicador: idIndicador,
                 nombre: indicador.indicador.nombre,
                 descripcion: indicador.indicador.descripcion || '',
                 orden: indicador.indicador.orden,
                 respuesta: respuestaSeleccionada,
-                puntaje_maximo: isFinite(maxPuntos) ? maxPuntos : 0
+                puntaje_maximo: isFinite(maxPuntos) ? maxPuntos : 0,
+                // Información de evidencia
+                id_respuesta: idRespuesta,
+                tiene_evidencia: nombreArchivo != null,
+                nombre_archivo_evidencia: nombreArchivo
             }
         })
 
