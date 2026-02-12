@@ -1,58 +1,25 @@
 "use client"
 
-import { Home, ClipboardList, History, Settings, LogOut, User, BarChart3 } from "lucide-react"
+import { Home, Users, BarChart3, Settings, LogOut } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
-interface Usuario {
-  cuenta: {
-    id: number
-    email: string
-    tipo_cuenta: string
-  }
-  bodega: {
-    id: number
-    razon_social: string
-    nombre_fantasia: string
-    cuit: string
-    calle: string
-    numeracion: string
-    telefono: string
-    email_institucional: string
-    localidad: {
-      id: number
-      nombre: string
-      departamento: string
-      provincia: string
-    }
-  }
-  responsable: {
-    id: number
-    nombre: string
-    apellido: string
-    cargo: string
-    dni: string
-    activo: boolean
-  }
-}
-
 const navigation = [
-  { name: "Inicio", href: "/dashboard", icon: Home },
-  { name: "Manual de usuario", href: "/dashboard/manual-usuario", icon: User },
-  { name: "Autoevaluación", href: "/dashboard/autoevaluacion", icon: ClipboardList },
-  { name: "Historial", href: "/dashboard/historial", icon: History },
-  { name: "Resultados", href: "/dashboard/resultados", icon: BarChart3 },
+  { name: "Inicio", href: "/admin", icon: Home },
+  { name: "Gestión de autoevaluaciones", href: "/admin/gestion-autoevaluacion", icon: BarChart3 },
 ]
 
-const bottomNavigation = [{ name: "Configuración", href: "/dashboard/configuracion", icon: Settings }]
+const bottomNavigation = [
+  { name: "Configuración", href: "/admin/configuracion", icon: Settings }
+]
 
-export function DashboardSidebar() {
+export function AdminSidebar() {
   const pathname = usePathname()
   const router = useRouter()
-  const [usuario, setUsuario] = useState<Usuario | null>(null)
+  const [usuario, setUsuario] = useState<any>(null)
 
   useEffect(() => {
     const usuarioStr = localStorage.getItem('usuario')
@@ -67,30 +34,25 @@ export function DashboardSidebar() {
   }, [])
 
   const handleLogout = async () => {
-    // Importar dinámicamente para evitar problemas de SSR
     const { logoutUsuario } = await import('@/lib/api/auth')
     await logoutUsuario()
-
-    // Redirigir a página de despedida
     router.push("/logout")
   }
 
-  // Obtener iniciales del responsable
   const getInitials = () => {
-    if (!usuario?.responsable) return "U"
+    if (!usuario?.responsable) return "A" // A de Admin
     const nombre = usuario.responsable.nombre?.[0] || ""
     const apellido = usuario.responsable.apellido?.[0] || ""
-    return (nombre + apellido).toUpperCase() || "U"
+    return (nombre + apellido).toUpperCase() || "A"
   }
 
   return (
     <div className="flex h-full w-64 flex-col bg-sidebar border-r border-sidebar-border">
       {/* Header con logo */}
       <div className="flex h-auto min-h-[120px] w-full items-center justify-center border-b border-sidebar-border bg-black py-4 px-4">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/assets/logos/logoclarovert.png"
-          alt="Coviar - Corporación Vitivinícola Argentina"
+          alt="Coviar - Administración"
           className="w-full h-auto object-contain"
           style={{ maxWidth: "200px" }}
         />
@@ -100,20 +62,15 @@ export function DashboardSidebar() {
       {usuario && (
         <div className="border-b border-sidebar-border p-4">
           <div className="flex items-center gap-3">
-            {/* Avatar con iniciales */}
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold text-sm">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-600 text-white font-semibold text-sm">
               {getInitials()}
             </div>
-            {/* Info del usuario */}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-sidebar-foreground truncate">
-                {usuario.responsable?.nombre} {usuario.responsable?.apellido}
+                Administrador
               </p>
               <p className="text-xs text-muted-foreground truncate">
-                {usuario.responsable?.cargo}
-              </p>
-              <p className="text-xs text-muted-foreground truncate">
-                {usuario.bodega?.nombre_fantasia}
+                {usuario.cuenta?.email || usuario.email_login}
               </p>
             </div>
           </div>
@@ -123,10 +80,8 @@ export function DashboardSidebar() {
       {/* Navegación principal */}
       <nav className="flex-1 space-y-1 p-4">
         {navigation.map((item) => {
-          // Para el link de Inicio (/dashboard), nunca se marca como activo
-          // Para otros links (/dashboard/...), permitimos subrutas
-          const isActive = item.href === "/dashboard"
-            ? false
+          const isActive = item.href === "/admin"
+            ? pathname === "/admin"
             : pathname === item.href || pathname?.startsWith(`${item.href}/`)
 
           return (

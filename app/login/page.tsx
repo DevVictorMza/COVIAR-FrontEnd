@@ -41,9 +41,16 @@ export default function LoginPage() {
       console.log('Usuario guardado en localStorage')
       console.log('Verificando localStorage:', localStorage.getItem('usuario'))
 
-      // Redirigir al dashboard
-      console.log('Redirigiendo a /dashboard')
-      router.push("/dashboard")
+      // Redirigir según el tipo de cuenta
+      const tipoCuenta = (usuario as any)?.tipo || localStorage.getItem('tipoCuenta')
+
+      if (tipoCuenta === 'ADMINISTRADOR_APP') {
+        console.log('Redirigiendo a /admin (Administrador)')
+        router.push("/admin")
+      } else {
+        console.log('Redirigiendo a /dashboard (Usuario normal)')
+        router.push("/dashboard")
+      }
     } catch (error: unknown) {
       console.error('Error en login:', error)
       const errorMessage = error instanceof Error ? error.message : "Ocurrió un error al iniciar sesión"
