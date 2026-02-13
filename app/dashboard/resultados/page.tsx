@@ -471,7 +471,7 @@ function LocalChapterCard({ capitulo, idAutoevaluacion }: { capitulo: CapituloLo
 
         {/* Modal Premium de Confirmación de Descarga */}
         <Dialog open={showDownloadModal} onOpenChange={setShowDownloadModal}>
-            <DialogContent className="sm:max-w-[500px] border-2 border-[#880D1E]/20 shadow-2xl">
+            <DialogContent className="sm:max-w-[500px] border-2 border-[#880D1E]/50 shadow-2xl">
                 {/* Header con gradiente institucional */}
                 <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#880D1E] via-[#B89B5E] to-[#880D1E]" />
                 
@@ -493,7 +493,7 @@ function LocalChapterCard({ capitulo, idAutoevaluacion }: { capitulo: CapituloLo
                         </div>
                         
                         {pendingDownload && (
-                            <div className="p-4 bg-gradient-to-br from-[#B89B5E]/10 to-[#880D1E]/5 rounded-lg border-2 border-[#B89B5E]/30 shadow-sm">
+                            <div className="p-4 bg-gradient-to-br from-[#B89B5E]/10 to-[#880D1E]/5 rounded-lg border-2 border-[#B89B5E]/50 shadow-sm">
                                 <p className="text-sm font-semibold text-black flex items-center gap-2 justify-center">
                                     <Award className="h-4 w-4 text-[#880D1E]" />
                                     {pendingDownload.nombreIndicador}
@@ -816,7 +816,7 @@ export default function ResultadosPage() {
                     {/* Fecha Card */}
                     <div className="group relative">
                         <div className="absolute inset-0 bg-gradient-to-r from-[#B89B5E] to-[#d4b76f] rounded-lg blur opacity-20 group-hover:opacity-35 transition duration-300"></div>
-                        <div className="relative flex items-center gap-3 px-5 py-3 bg-white border-2 border-[#B89B5E]/30 rounded-lg shadow-md hover:shadow-lg hover:border-[#B89B5E]/50 transition-all duration-300">
+                        <div className="relative flex items-center gap-3 px-5 py-3 bg-white border-2 border-[#B89B5E]/50 rounded-lg shadow-md hover:shadow-lg hover:border-[#B89B5E]/70 transition-all duration-300">
                             <div className="p-2 bg-gradient-to-br from-[#B89B5E]/10 to-[#B89B5E]/5 rounded-md">
                                 <Calendar className="h-5 w-5 text-[#B89B5E]" />
                             </div>
@@ -827,7 +827,7 @@ export default function ResultadosPage() {
                     {/* Responsable Card */}
                     <div className="group relative">
                         <div className="absolute inset-0 bg-gradient-to-r from-[#B89B5E] to-[#d4b76f] rounded-lg blur opacity-20 group-hover:opacity-35 transition duration-300"></div>
-                        <div className="relative flex items-center gap-3 px-5 py-3 bg-white border-2 border-[#B89B5E]/30 rounded-lg shadow-md hover:shadow-lg hover:border-[#B89B5E]/50 transition-all duration-300">
+                        <div className="relative flex items-center gap-3 px-5 py-3 bg-white border-2 border-[#B89B5E]/50 rounded-lg shadow-md hover:shadow-lg hover:border-[#B89B5E]/70 transition-all duration-300">
                             <div className="p-2 bg-gradient-to-br from-[#B89B5E]/10 to-[#B89B5E]/5 rounded-md">
                                 <Users className="h-5 w-5 text-[#B89B5E]" />
                             </div>
@@ -853,7 +853,7 @@ export default function ResultadosPage() {
             {/* Tarjetas de resumen */}
             <div className="grid gap-4 md:grid-cols-3">
                 {/* Puntaje Final */}
-                <Card className="relative overflow-hidden border-2 border-[#880D1E]/20 shadow-sm">
+                <Card className="relative overflow-hidden border-2 border-[#880D1E]/50 shadow-sm">
                     <div
                         className="absolute inset-0 opacity-5"
                         style={{
@@ -884,7 +884,7 @@ export default function ResultadosPage() {
                 </Card>
 
                 {/* Nivel de Sustentabilidad */}
-                <Card className="relative overflow-hidden border-2 shadow-sm" style={{ borderColor: `${nivelInfo.color}30` }}>
+                <Card className="relative overflow-hidden border-2 shadow-sm" style={{ borderColor: `${nivelInfo.color}50` }}>
                     <div
                         className="absolute inset-0 opacity-5"
                         style={{
@@ -915,7 +915,7 @@ export default function ResultadosPage() {
                 </Card>
 
                 {/* Segmento */}
-                <Card className="relative overflow-hidden border-2 border-[#B89B5E]/20 shadow-sm">
+                <Card className="relative overflow-hidden border-2 border-[#B89B5E]/50 shadow-sm">
                     <div
                         className="absolute inset-0 opacity-5"
                         style={{
