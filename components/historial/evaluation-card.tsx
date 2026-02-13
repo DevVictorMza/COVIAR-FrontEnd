@@ -14,7 +14,7 @@ import {
     Target,
     BarChart3,
     CheckCircle2,
-    Gauge
+    Loader2
 } from "lucide-react"
 import type { AutoevaluacionHistorial, ResultadoDetallado } from "@/lib/api/types"
 import { determineSustainabilityLevel } from "@/lib/utils/scoring"
@@ -30,7 +30,7 @@ interface EvaluationCardProps {
     index: number
     total: number
     isLoading: boolean
-    onLoadDetails: (id: number) => void
+    onLoadDetails: (id: number) => Promise<ResultadoDetallado | null>
 }
 
 export function EvaluationCard({
@@ -42,6 +42,8 @@ export function EvaluationCard({
     onLoadDetails
 }: EvaluationCardProps) {
     const [isExpanded, setIsExpanded] = useState(false)
+    const [exportingPDF, setExportingPDF] = useState(false)
+    const [exportingCSV, setExportingCSV] = useState(false)
 
     const isRecent = index === 0
     const evaluacionNumero = total - index
@@ -50,23 +52,45 @@ export function EvaluationCard({
         : null
 
     const handleToggleExpand = () => {
-        if (!isExpanded && !resultado) {
-            onLoadDetails(evaluacion.id_autoevaluacion)
+        if (!isExpanded) {
+            const hasIndicatorData = resultado?.capitulos?.some(c => c.indicadores && c.indicadores.length > 0)
+            if (!resultado || !hasIndicatorData) {
+                onLoadDetails(evaluacion.id_autoevaluacion)
+            }
         }
         setIsExpanded(!isExpanded)
     }
 
-    const handleExportCSV = (e: React.MouseEvent) => {
+    const handleExportCSV = async (e: React.MouseEvent) => {
         e.stopPropagation()
-        if (resultado) {
-            exportResultadoDetalladoToCSV(resultado, `evaluacion_${evaluacion.id_autoevaluacion}`)
+        setExportingCSV(true)
+        try {
+            // Usar resultado existente o cargarlo bajo demanda
+            const data = resultado ?? await onLoadDetails(evaluacion.id_autoevaluacion)
+            if (data) {
+                exportResultadoDetalladoToCSV(data, `evaluacion_${evaluacion.id_autoevaluacion}`)
+            }
+        } finally {
+            setExportingCSV(false)
         }
     }
 
-    const handleExportPDF = (e: React.MouseEvent) => {
+    const handleExportPDF = async (e: React.MouseEvent) => {
         e.stopPropagation()
-        if (resultado) {
-            exportResultadoDetalladoToPDF(resultado, 'Bodega', `evaluacion_${evaluacion.id_autoevaluacion}`)
+        setExportingPDF(true)
+        try {
+            // Obtener nombre de bodega desde localStorage
+            const usuarioStr = localStorage.getItem('usuario')
+            const usuario = usuarioStr ? JSON.parse(usuarioStr) : {}
+            const bodegaNombre = usuario.bodega?.nombre_fantasia || 'Bodega'
+
+            // Usar resultado existente o cargarlo bajo demanda
+            const data = resultado ?? await onLoadDetails(evaluacion.id_autoevaluacion)
+            if (data) {
+                exportResultadoDetalladoToPDF(data, bodegaNombre, `evaluacion_${evaluacion.id_autoevaluacion}`)
+            }
+        } finally {
+            setExportingPDF(false)
         }
     }
 
@@ -89,16 +113,18 @@ export function EvaluationCard({
     ) ?? null
 
     return (
-        <Card className="border-border/50 hover:border-border transition-colors">
+        <Card className="border-border/50 hover:bg-[#81242d]/5 hover:border-[#81242d]/50 transition-all duration-300 hover:shadow-lg" style={{
+            boxShadow: '-4px 0 0 0 #81242d, 0 2px 4px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'
+        }}>
             <CardContent className="p-6">
-                {/* Header de la tarjeta */}
-                <div className="flex items-start justify-between mb-6">
+                {/* Header de la tarjeta mejorado */}
+                <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-3">
                         <h3 className="text-lg font-semibold">
                             Evaluación #{evaluacionNumero}
                         </h3>
                         {isRecent && (
-                            <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 text-xs">
+                            <Badge className="bg-[#81242d]/10 text-[#81242d] border border-[#81242d]/20 font-medium">
                                 Más reciente
                             </Badge>
                         )}
@@ -118,70 +144,109 @@ export function EvaluationCard({
                 </div>
 
                 {/* Fecha */}
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                     <Calendar className="h-4 w-4" />
                     {formatDate(evaluacion.fecha_inicio)}
                 </div>
 
-                {/* Métricas principales */}
-                <div className="grid grid-cols-3 gap-6 mb-6">
-                    {/* Puntaje Total */}
-                    <div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                            <Target className="h-4 w-4" />
-                            Puntaje Total
-                        </div>
-                        <div className="text-2xl font-bold text-foreground">
-                            {evaluacion.puntaje_final ?? '-'}
-                            <span className="text-base font-normal text-muted-foreground">
-                                {' '}/ {evaluacion.puntaje_maximo ?? '?'}
-                            </span>
-                        </div>
-                    </div>
+                {/* Métricas principales con MAYOR SEPARACIÓN */}
+                <div className="mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Puntaje Total */}
+                        <Card className="shadow-sm hover:shadow-md transition-shadow border border-border/50 hover:border-[#81242d]/30">
+                            <CardContent className="p-3.5">
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                                    <Target className="h-3.5 w-3.5 text-[#81242d]" />
+                                    <span className="font-medium">Puntaje Total</span>
+                                </div>
+                                <div className="text-2xl font-bold" style={{ color: '#81242d' }}>
+                                    {evaluacion.puntaje_final ?? '-'}
+                                    <span className="text-sm font-normal text-muted-foreground ml-1">
+                                        / {evaluacion.puntaje_maximo ?? '?'}
+                                    </span>
+                                </div>
+                                <div className="mt-1.5 h-1 bg-muted rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-[#81242d] transition-all duration-500"
+                                        style={{
+                                            width: `${evaluacion.puntaje_final && evaluacion.puntaje_maximo
+                                                ? (evaluacion.puntaje_final / evaluacion.puntaje_maximo * 100)
+                                                : 0}%`
+                                        }}
+                                    />
+                                </div>
+                            </CardContent>
+                        </Card>
 
-                    {/* Porcentaje Completado */}
-                    <div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                            <BarChart3 className="h-4 w-4" />
-                            Porcentaje Completado
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span
-                                className="text-2xl font-bold"
-                                style={{ color: nivel?.color }}
-                            >
-                                {evaluacion.porcentaje ?? '-'}%
-                            </span>
-                            {evaluacion.porcentaje !== null && evaluacion.porcentaje >= 50 && (
-                                <TrendingUp className="h-5 w-5 text-green-500" />
-                            )}
-                        </div>
-                    </div>
+                        {/* Porcentaje Completado */}
+                        <Card className="shadow-sm hover:shadow-md transition-shadow border border-border/50 hover:border-[#81242d]/30">
+                            <CardContent className="p-3.5">
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                                    <BarChart3 className="h-3.5 w-3.5 text-[#81242d]" />
+                                    <span className="font-medium">Porcentaje Alcanzado</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span
+                                        className="text-2xl font-bold"
+                                        style={{ color: nivel?.color || '#81242d' }}
+                                    >
+                                        {evaluacion.porcentaje ?? '-'}%
+                                    </span>
+                                    {evaluacion.porcentaje !== null && evaluacion.porcentaje >= 50 && (
+                                        <div className="bg-green-500/10 p-1 rounded">
+                                            <TrendingUp className="h-4 w-4 text-green-500" />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="mt-1.5 h-1 bg-muted rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full transition-all duration-500"
+                                        style={{
+                                            width: `${evaluacion.porcentaje ?? 0}%`,
+                                            backgroundColor: nivel?.color || '#81242d'
+                                        }}
+                                    />
+                                </div>
+                            </CardContent>
+                        </Card>
 
-                    {/* Indicadores Respondidos */}
-                    <div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                            <CheckCircle2 className="h-4 w-4" />
-                            Indicadores Respondidos
-                        </div>
-                        <div className="text-2xl font-bold text-foreground">
-                            {indicadoresRespondidos ?? evaluacion.puntaje_final !== null ? '✓' : '-'}
-                            {indicadoresTotal && (
-                                <span className="text-base font-normal text-muted-foreground">
-                                    {' '}/ {indicadoresTotal}
-                                </span>
-                            )}
-                        </div>
+                        {/* Indicadores Respondidos */}
+                        <Card className="shadow-sm hover:shadow-md transition-shadow border border-border/50 hover:border-[#81242d]/30">
+                            <CardContent className="p-3.5">
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                                    <CheckCircle2 className="h-3.5 w-3.5 text-[#81242d]" />
+                                    <span className="font-medium">Indicadores Respondidos</span>
+                                </div>
+                                <div className="text-2xl font-bold" style={{ color: '#81242d' }}>
+                                    {indicadoresRespondidos ?? (evaluacion.puntaje_final !== null ? '✓' : '-')}
+                                    {indicadoresTotal && (
+                                        <span className="text-sm font-normal text-muted-foreground ml-1">
+                                            / {indicadoresTotal}
+                                        </span>
+                                    )}
+                                </div>
+                                {indicadoresRespondidos !== null && indicadoresTotal && (
+                                    <div className="mt-1.5 h-1 bg-muted rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-[#81242d] transition-all duration-500"
+                                            style={{
+                                                width: `${(indicadoresRespondidos / indicadoresTotal * 100)}%`
+                                            }}
+                                        />
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
                     </div>
                 </div>
 
-                {/* Botones de acción */}
-                <div className="flex items-center justify-between pt-4 border-t border-border/50">
+                {/* Botones de acción mejorados */}
+                <div className="flex items-center justify-between pt-3 border-t border-border/50">
                     <Button
                         variant="ghost"
                         size="sm"
                         onClick={handleToggleExpand}
-                        className="gap-2"
+                        className="gap-2 hover:bg-[#81242d]/5 hover:text-[#81242d]"
                     >
                         {isExpanded ? (
                             <>
@@ -201,28 +266,39 @@ export function EvaluationCard({
                             variant="outline"
                             size="sm"
                             onClick={handleExportCSV}
-                            disabled={!resultado}
-                            className="gap-2"
+                            disabled={exportingCSV}
+                            className="gap-2 border-[#81242d]/30 hover:bg-[#81242d]/5 hover:border-[#81242d] hover:text-[#81242d] transition-colors"
                         >
-                            <FileSpreadsheet className="h-4 w-4" />
+                            {exportingCSV ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <FileSpreadsheet className="h-4 w-4" />
+                            )}
                             CSV
                         </Button>
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={handleExportPDF}
-                            disabled={!resultado}
-                            className="gap-2"
+                            disabled={exportingPDF}
+                            className="gap-2 border-[#81242d]/30 hover:bg-[#81242d]/5 hover:border-[#81242d] hover:text-[#81242d] transition-colors"
                         >
-                            <FileText className="h-4 w-4" />
+                            {exportingPDF ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <FileText className="h-4 w-4" />
+                            )}
                             PDF
                         </Button>
                     </div>
                 </div>
 
-                {/* Detalles expandidos */}
+                {/* Detalles expandidos con título mejorado */}
                 {isExpanded && (
                     <div className="mt-6 pt-6 border-t border-border/50">
+                        <h4 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">
+                            Resultados por Capítulo
+                        </h4>
                         {isLoading ? (
                             <div className="flex items-center justify-center py-8">
                                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>

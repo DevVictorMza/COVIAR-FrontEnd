@@ -74,6 +74,11 @@ export async function loginUsuario(data: LoginRequest): Promise<unknown> {
     // Guardar en localStorage
     localStorage.setItem('usuario', JSON.stringify(userData))
 
+    // Guardar tipoCuenta por separado para validación de admin
+    if (userData.tipo) {
+      localStorage.setItem('tipoCuenta', userData.tipo)
+    }
+
     return userData
   } catch (error) {
     if (error instanceof TypeError && error.message === 'Failed to fetch') {
@@ -103,6 +108,15 @@ export async function logoutUsuario(): Promise<void> {
     // Siempre limpiar datos de localStorage, incluso si falla el backend
     localStorage.removeItem('usuario')
     localStorage.removeItem('token')
+    localStorage.removeItem('tipoCuenta')
+
+    // Limpiar caches de historial
+    const keys = Object.keys(localStorage)
+    for (const key of keys) {
+      if (key.startsWith('historial_') || key.startsWith('resultados_')) {
+        localStorage.removeItem(key)
+      }
+    }
   }
 }
 

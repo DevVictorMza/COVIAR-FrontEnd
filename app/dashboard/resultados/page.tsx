@@ -19,15 +19,13 @@ import {
     Plus,
     ChevronDown,
     ChevronUp,
-    AlertCircle,
-    Download,
-    FileX
+    AlertCircle
 } from "lucide-react"
 import { NivelesSostenibilidadTable } from "@/components/results/niveles-sostenibilidad-table"
 import { getNivelSostenibilidadInfo } from "@/lib/utils/scoring"
 import { descargarEvidencia } from "@/lib/api/autoevaluacion"
 import type { SegmentoTipo } from "@/lib/utils/scoring"
-import type { CapituloResultado } from "@/lib/api/types"
+import { obtenerHistorialAutoevaluaciones, obtenerResultadosAutoevaluacion } from "@/lib/api/autoevaluacion"
 
 // Colores institucionales COVIAR
 const COLORS = {
@@ -490,19 +488,92 @@ export default function ResultadosPage() {
     const router = useRouter()
     const [resultadoLocal, setResultadoLocal] = useState<ResultadoLocal | null>(null)
     const [isLoading, setIsLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
-        // Cargar último resultado desde localStorage
-        const ultimoResultado = localStorage.getItem('ultimo_resultado_completado')
-        if (ultimoResultado) {
+        const cargarResultados = async () => {
             try {
-                const parsed = JSON.parse(ultimoResultado) as ResultadoLocal
-                setResultadoLocal(parsed)
-            } catch (e) {
-                console.error('Error al parsear resultado:', e)
+                // Primero intentar cargar desde localStorage para carga rápida
+                const ultimoResultado = localStorage.getItem('ultimo_resultado_completado')
+                if (ultimoResultado) {
+                    try {
+                        const parsed = JSON.parse(ultimoResultado) as ResultadoLocal
+                        setResultadoLocal(parsed)
+                        setIsLoading(false)
+                        return
+                    } catch (e) {
+                        console.error('Error al parsear resultado local:', e)
+                    }
+                }
+
+                // Si no hay en localStorage, consultar la API
+                const usuarioStr = localStorage.getItem('usuario')
+                if (!usuarioStr) {
+                    setIsLoading(false)
+                    return
+                }
+
+                const usuario = JSON.parse(usuarioStr)
+                const idBodega = usuario.bodega?.id_bodega || usuario.id_bodega
+
+                if (!idBodega) {
+                    setIsLoading(false)
+                    return
+                }
+
+                // Obtener historial de evaluaciones completadas
+                const historial = await obtenerHistorialAutoevaluaciones(idBodega)
+
+                if (!historial || historial.length === 0) {
+                    setIsLoading(false)
+                    return
+                }
+
+                // Tomar la evaluación más reciente
+                const ultimaEvaluacion = historial[0]
+
+                // Obtener resultados detallados con capítulos
+                const resultadosDetallados = await obtenerResultadosAutoevaluacion(ultimaEvaluacion.id_autoevaluacion)
+
+                // Formatear respuesta de API a formato ResultadoLocal
+                const resultadoFormateado: ResultadoLocal = {
+                    assessmentId: ultimaEvaluacion.id_autoevaluacion.toString(),
+                    puntaje_final: ultimaEvaluacion.puntaje_final || 0,
+                    puntaje_maximo: ultimaEvaluacion.puntaje_maximo || 0,
+                    porcentaje: ultimaEvaluacion.porcentaje || 0,
+                    fecha_completo: ultimaEvaluacion.fecha_finalizacion || ultimaEvaluacion.fecha_inicio,
+                    segmento: ultimaEvaluacion.nombre_segmento || 'N/A',
+                    nombre_bodega: usuario.bodega?.nombre_fantasia || 'N/A',
+                    responsable: `${usuario.responsable?.nombre || ''} ${usuario.responsable?.apellido || ''}`.trim() || 'N/A',
+                    capitulos: resultadosDetallados.capitulos?.map(cap => ({
+                        id_capitulo: cap.id_capitulo,
+                        nombre: cap.nombre,
+                        puntaje_obtenido: cap.puntaje_obtenido || 0,
+                        puntaje_maximo: cap.puntaje_maximo || 0,
+                        porcentaje: cap.porcentaje || 0,
+                        indicadores_completados: cap.indicadores_completados || 0,
+                        indicadores_total: cap.indicadores_total || 0,
+                    })) || [],
+                    nivel_sostenibilidad: ultimaEvaluacion.nivel_sostenibilidad?.nombre || 'BÁSICO'
+                }
+
+                // Guardar en localStorage para futuras consultas
+                try {
+                    localStorage.setItem('ultimo_resultado_completado', JSON.stringify(resultadoFormateado))
+                } catch (e) {
+                    console.error('Error al guardar resultado en localStorage:', e)
+                }
+
+                setResultadoLocal(resultadoFormateado)
+            } catch (err) {
+                console.error('Error al cargar resultados:', err)
+                setError(err instanceof Error ? err.message : 'Error desconocido al cargar resultados')
+            } finally {
+                setIsLoading(false)
             }
         }
-        setIsLoading(false)
+
+        cargarResultados()
     }, [])
 
     if (isLoading) {
@@ -516,6 +587,10 @@ export default function ResultadosPage() {
                 </div>
             </div>
         )
+    }
+
+    if (error) {
+        return <ErrorState message={error} />
     }
 
     if (!resultadoLocal) {

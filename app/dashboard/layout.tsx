@@ -25,11 +25,19 @@ export default function DashboardLayout({
   useEffect(() => {
     // Verificar si hay usuario en localStorage
     const usuarioStr = localStorage.getItem('usuario')
+    const tipoCuenta = localStorage.getItem('tipoCuenta')
 
     if (!usuarioStr) {
       // No hay usuario, redirigir a login
       console.log('No hay usuario en localStorage, redirigiendo a login')
       router.push("/login")
+      return
+    }
+
+    // Si es administrador, redirigir a /admin
+    if (tipoCuenta === 'ADMINISTRADOR_APP') {
+      console.log('Usuario es administrador, redirigiendo a /admin')
+      router.push("/admin")
       return
     }
 
