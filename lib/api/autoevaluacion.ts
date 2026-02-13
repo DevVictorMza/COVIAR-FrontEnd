@@ -395,20 +395,23 @@ export async function eliminarEvidencia(
     idAutoevaluacion: string | number,
     idRespuesta: number
 ): Promise<void> {
-    const response = await fetch(
-        `/api/autoevaluaciones/${idAutoevaluacion}/respuestas/${idRespuesta}/evidencias`,
-        {
-            method: 'DELETE',
-            headers: getAuthHeaders(),
-            credentials: 'include',
-        }
-    )
+    const url = `/api/autoevaluaciones/${idAutoevaluacion}/respuestas/${idRespuesta}/evidencia`
+    console.log(`eliminarEvidencia: DELETE ${url}`)
+    
+    const response = await fetch(url, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+        credentials: 'include',
+    })
 
     const data = await response.json().catch(() => ({}))
 
     if (!response.ok) {
+        console.error('eliminarEvidencia: Error', response.status, JSON.stringify(data))
         throw new Error(data?.message || `Error ${response.status}: ${response.statusText}`)
     }
+    
+    console.log('eliminarEvidencia: Éxito')
 }
 
 /**

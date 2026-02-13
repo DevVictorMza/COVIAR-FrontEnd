@@ -44,7 +44,7 @@ const navigation = [
   { name: "Manual de usuario", href: "/dashboard/manual-usuario", icon: User },
   { name: "Autoevaluación", href: "/dashboard/autoevaluacion", icon: ClipboardList },
   { name: "Historial", href: "/dashboard/historial", icon: History },
-  { name: "Resultados", href: "/dashboard/resultados", icon: BarChart3 },
+  { name: "Ultimos resultados", href: "/dashboard/resultados", icon: BarChart3 },
 ]
 
 const bottomNavigation = [{ name: "Configuración", href: "/dashboard/configuracion", icon: Settings }]

@@ -16,7 +16,9 @@ import {
   guardarRespuestas,
   guardarRespuestaIndividual,
   completarAutoevaluacion,
-  cancelarAutoevaluacion
+  cancelarAutoevaluacion,
+  eliminarEvidencia,
+  obtenerEvidencia
 } from "@/lib/api/autoevaluacion"
 import type { CapituloEstructura, IndicadorEstructura, Segmento, ResultadoDetallado } from "@/lib/api/types"
 import { calculateChapterScores, calculateChapterScoresWithResponses, determineLevelByScoreAndSegment } from "@/lib/utils/scoring"
@@ -30,6 +32,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { SegmentConfirmationModal } from "@/components/autoevaluacion/segment-confirmation-modal"
+import { FinalizeConfirmationModal } from "@/components/autoevaluacion/finalize-confirmation-modal"
+import { ChangeResponseWarningModal } from "@/components/autoevaluacion/change-response-warning-modal"
 import { EvidenciaUpload } from "@/components/autoevaluacion/evidencia-upload"
 
 export default function AutoevaluacionPage() {
@@ -53,6 +57,14 @@ export default function AutoevaluacionPage() {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
   const [showPendingDialog, setShowPendingDialog] = useState(false)
   const [showConfirmationModal, setShowConfirmationModal] = useState(false)
+  const [showFinalizeModal, setShowFinalizeModal] = useState(false)
+  const [showChangeResponseWarning, setShowChangeResponseWarning] = useState(false)
+  const [pendingResponseChange, setPendingResponseChange] = useState<{
+    indicador: IndicadorEstructura
+    newLevel: number
+    newNivelId: number
+    nombreArchivo: string
+  } | null>(null)
 
   // Estado para segmentos
   const [isSelectingSegment, setIsSelectingSegment] = useState(true)
@@ -66,6 +78,7 @@ export default function AutoevaluacionPage() {
     fechaInicio: string
     tieneSegmento: boolean
     cantidadRespuestas: number
+    id_segmento: number | null
   } | null>(null)
   const [savedResponses, setSavedResponses] = useState<Array<{ id_respuesta?: number, id_indicador: number, id_nivel_respuesta: number }>>([])
 
@@ -139,7 +152,8 @@ export default function AutoevaluacionPage() {
             id: auto.id_autoevaluacion,
             fechaInicio: auto.fecha_inicio,
             tieneSegmento: auto.id_segmento !== null,
-            cantidadRespuestas: respuestasGuardadas.length
+            cantidadRespuestas: respuestasGuardadas.length,
+            id_segmento: auto.id_segmento
           })
           setSavedResponses(respuestasGuardadas)
           setShowPendingDialog(true)
@@ -182,6 +196,20 @@ export default function AutoevaluacionPage() {
 
       // CASOS 3 y 4: Pendiente CON segmento - cargar estructura
       console.log('CASO 3/4: Pendiente con segmento - cargando estructura')
+      
+      // Obtener la lista de segmentos para recuperar el segmento completo
+      const segmentosData = await obtenerSegmentos(autoId)
+      setSegmentos(segmentosData)
+      
+      // Buscar el segmento que corresponde a la autoevaluación pendiente
+      const segmentoActual = segmentosData.find(seg => seg.id_segmento === pendingInfo.id_segmento)
+      if (segmentoActual) {
+        setSelectedSegment(segmentoActual)
+        console.log('Segmento recuperado:', segmentoActual.nombre)
+      } else {
+        console.warn('⚠️ No se encontró el segmento con id:', pendingInfo.id_segmento)
+      }
+      
       const estructuraResponse = await obtenerEstructuraAutoevaluacion(autoId)
 
       if (estructuraResponse.capitulos && estructuraResponse.capitulos.length > 0) {
@@ -210,14 +238,20 @@ export default function AutoevaluacionPage() {
           const respuestaIdMap: Record<number, number> = {}
           savedResponses.forEach(r => {
             uniqueResponses.set(r.id_indicador, r.id_nivel_respuesta)
-            // Capturar id_respuesta si viene del backend
-            if (r.id_respuesta) {
-              respuestaIdMap[r.id_indicador] = r.id_respuesta
+            // Capturar id_respuesta si viene del backend (intentar ambos nombres: id_respuesta o id)
+            const idRespuesta = r.id_respuesta || (r as any).id
+            if (idRespuesta) {
+              respuestaIdMap[r.id_indicador] = idRespuesta
             }
           })
 
           if (savedResponses.length !== uniqueResponses.size) {
             console.warn(`⚠️ API devolvió ${savedResponses.length} respuestas pero solo ${uniqueResponses.size} son únicas`)
+          }
+
+          console.log(`📊 Respuestas guardadas procesadas: ${savedResponses.length} respuestas, ${Object.keys(respuestaIdMap).length} con id_respuesta`)
+          if (savedResponses.length > 0 && Object.keys(respuestaIdMap).length === 0) {
+            console.warn('⚠️ Ninguna respuesta tiene id_respuesta. Estructura de respuesta:', savedResponses[0])
           }
 
           // Buscar el nivel de puntos para cada respuesta guardada
@@ -243,6 +277,25 @@ export default function AutoevaluacionPage() {
           if (Object.keys(respuestaIdMap).length > 0) {
             setRespuestaIds(respuestaIdMap)
             console.log('Mapeo id_indicador -> id_respuesta cargado:', respuestaIdMap)
+            
+            // Cargar evidencias existentes para cada respuesta
+            const evidenciasMap: Record<number, string | null> = {}
+            for (const [idIndicadorStr, idRespuesta] of Object.entries(respuestaIdMap)) {
+              try {
+                const evidencia = await obtenerEvidencia(autoId, idRespuesta)
+                if (evidencia?.nombre) {
+                  evidenciasMap[parseInt(idIndicadorStr)] = evidencia.nombre
+                  console.log(`📎 Evidencia cargada para indicador ${idIndicadorStr}:`, evidencia.nombre)
+                }
+              } catch (error) {
+                // Si no hay evidencia o hay error, simplemente no se agrega al map
+                console.log(`No hay evidencia para indicador ${idIndicadorStr}`)
+              }
+            }
+            if (Object.keys(evidenciasMap).length > 0) {
+              setEvidencias(evidenciasMap)
+              console.log(`✅ Cargadas ${Object.keys(evidenciasMap).length} evidencias existentes`)
+            }
           }
           console.log(`✅ Cargadas ${Object.keys(apiResponsesMap).length} respuestas guardadas (únicas)`)
         }
@@ -310,11 +363,74 @@ export default function AutoevaluacionPage() {
     setCanFinalize(completedIndicators === totalIndicadoresHabilitados && totalIndicadoresHabilitados > 0)
   }, [responses, estructura])
 
-  // Manejar cambio de respuesta
+  // Manejar cambio de respuesta (verifica si hay evidencia y muestra modal de confirmación)
   const handleResponseChange = async (indicador: IndicadorEstructura, newLevel: number, newNivelId: number) => {
     if (!assessmentId || !currentCapitulo) return
 
+    const idIndicador = indicador.indicador.id_indicador
+    const respuestaAnterior = responsesForApi[idIndicador]
+    const tieneEvidencia = evidencias[idIndicador]
+    
+    // Si la respuesta está cambiando y hay evidencia, mostrar modal de advertencia
+    if (respuestaAnterior !== undefined && respuestaAnterior !== newNivelId && tieneEvidencia) {
+      setPendingResponseChange({
+        indicador,
+        newLevel,
+        newNivelId,
+        nombreArchivo: tieneEvidencia
+      })
+      setShowChangeResponseWarning(true)
+      return
+    }
+
+    // Si no hay evidencia o no está cambiando, proceder directamente
+    await executeResponseChange(indicador, newLevel, newNivelId)
+  }
+
+  // Confirmar cambio de respuesta con eliminación de evidencia
+  const handleConfirmResponseChange = async () => {
+    if (!pendingResponseChange) return
+
+    setShowChangeResponseWarning(false)
+    
+    await executeResponseChange(
+      pendingResponseChange.indicador,
+      pendingResponseChange.newLevel,
+      pendingResponseChange.newNivelId
+    )
+
+    setPendingResponseChange(null)
+  }
+
+  // Ejecutar el cambio de respuesta (con o sin eliminación de evidencia)
+  const executeResponseChange = async (indicador: IndicadorEstructura, newLevel: number, newNivelId: number) => {
+    if (!assessmentId || !currentCapitulo) return
+
     const key = `${currentCapitulo.capitulo.id_capitulo}-${indicador.indicador.id_indicador}`
+    const idIndicador = indicador.indicador.id_indicador
+
+    // Verificar si está cambiando la respuesta y hay evidencia que eliminar
+    const respuestaAnterior = responsesForApi[idIndicador]
+    const idRespuestaAnterior = respuestaIds[idIndicador]
+    const tieneEvidencia = evidencias[idIndicador]
+    
+    // Si la respuesta está cambiando (es diferente) y hay evidencia asociada, eliminarla
+    if (respuestaAnterior !== undefined && respuestaAnterior !== newNivelId && idRespuestaAnterior && tieneEvidencia) {
+      console.log(`🗑️ Eliminando evidencia anterior del indicador ${idIndicador} (respuesta ${idRespuestaAnterior})`)
+      try {
+        await eliminarEvidencia(assessmentId, idRespuestaAnterior)
+        // Limpiar el estado de evidencias para este indicador
+        setEvidencias(prev => {
+          const updated = { ...prev }
+          delete updated[idIndicador]
+          return updated
+        })
+        console.log(`✅ Evidencia eliminada exitosamente`)
+      } catch (error) {
+        console.error('❌ Error al eliminar evidencia anterior:', error)
+        // Continuar con el cambio de respuesta aunque falle la eliminación
+      }
+    }
 
     // Actualizar estado para UI (puntos)
     setResponses(prev => ({
@@ -812,7 +928,7 @@ export default function AutoevaluacionPage() {
 
               {estructura.findIndex(c => c.capitulo.id_capitulo === currentCapitulo.capitulo.id_capitulo) === estructura.length - 1 ? (
                 <Button
-                  onClick={handleFinalizeAssessment}
+                  onClick={() => setShowFinalizeModal(true)}
                   disabled={!canFinalize || isFinalizing || isSaving}
                   className="bg-coviar-borravino hover:bg-coviar-borravino-dark text-white w-full sm:w-auto"
                 >
@@ -1004,6 +1120,31 @@ export default function AutoevaluacionPage() {
           onClose={handleStartFromModal}
           segmentName={selectedSegment.nombre}
           estructura={estructura}
+        />
+      )}
+
+      {/* Modal de confirmación de finalización */}
+      <FinalizeConfirmationModal
+        isOpen={showFinalizeModal}
+        onClose={() => setShowFinalizeModal(false)}
+        onConfirm={() => {
+          setShowFinalizeModal(false)
+          handleFinalizeAssessment()
+        }}
+        isProcessing={isFinalizing}
+      />
+
+      {/* Modal de advertencia de cambio de respuesta con evidencia */}
+      {pendingResponseChange && (
+        <ChangeResponseWarningModal
+          isOpen={showChangeResponseWarning}
+          onClose={() => {
+            setShowChangeResponseWarning(false)
+            setPendingResponseChange(null)
+          }}
+          onConfirm={handleConfirmResponseChange}
+          nombreArchivo={pendingResponseChange.nombreArchivo}
+          isProcessing={isSaving}
         />
       )}
     </div>

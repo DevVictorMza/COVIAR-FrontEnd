@@ -391,7 +391,7 @@ function EmptyState() {
     return (
         <div className="p-8 space-y-8">
             <div>
-                <h1 className="text-3xl font-bold">Resultados de la última Autoevaluación</h1>
+                <h1 className="text-3xl font-bold">Resultado de la última Autoevaluación completada</h1>
                 <p className="text-muted-foreground mt-1">
                     Análisis detallado de tu evaluación de sostenibilidad enoturística
                 </p>
@@ -434,7 +434,7 @@ function ErrorState({ message }: { message: string }) {
     return (
         <div className="p-8 space-y-8">
             <div>
-                <h1 className="text-3xl font-bold">Resultados de la última Autoevaluación</h1>
+                <h1 className="text-3xl font-bold">Resultado de la última Autoevaluación completada</h1>
                 <p className="text-muted-foreground mt-1">
                     Análisis detallado de tu evaluación de sostenibilidad enoturística
                 </p>
@@ -662,7 +662,7 @@ export default function ResultadosPage() {
                 {/* Títulos */}
                 <div className="space-y-2 pt-2">
                     <h1 className="text-3xl font-bold text-foreground">
-                        Resultados de la última Autoevaluación
+                        Resultado de la última Autoevaluación completada
                     </h1>
                     <p className="text-muted-foreground">
                         Informe detallado de sostenibilidad enoturística

@@ -39,6 +39,7 @@ export function EvidenciaUpload({
     const [resolvedIdRespuesta, setResolvedIdRespuesta] = useState<number | null>(idRespuesta)
     const [progress, setProgress] = useState(0)
     const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false)
     const [pendingFile, setPendingFile] = useState<File | null>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -92,6 +93,19 @@ export function EvidenciaUpload({
             setResolvedIdRespuesta(idRespuesta)
         }
     }, [idRespuesta])
+
+    // Sincronizar archivo existente con estado local
+    useEffect(() => {
+        if (archivoExistente) {
+            setNombreArchivo(archivoExistente)
+            setStatus("has-file")
+        } else if (archivoExistente === null) {
+            // Si archivoExistente cambió a null, resetear el componente
+            setNombreArchivo(null)
+            setStatus("idle")
+            setErrorMessage(null)
+        }
+    }, [archivoExistente])
 
     /**
      * Resuelve el id_respuesta re-enviando un POST con la respuesta actual.
@@ -207,10 +221,17 @@ export function EvidenciaUpload({
         setStatus(nombreArchivo ? "has-file" : "idle")
     }, [nombreArchivo])
 
-    const handleDelete = useCallback(async () => {
+    const handleDeleteClick = useCallback(() => {
+        setShowDeleteDialog(true)
+    }, [])
+
+    const handleConfirmDelete = useCallback(async () => {
         const effectiveId = resolvedIdRespuesta ?? idRespuesta
         if (!effectiveId) return
+        
+        setShowDeleteDialog(false)
         setIsDeleting(true)
+        
         try {
             await eliminarEvidencia(idAutoevaluacion, effectiveId)
             setNombreArchivo(null)
@@ -224,6 +245,10 @@ export function EvidenciaUpload({
             setIsDeleting(false)
         }
     }, [idAutoevaluacion, idRespuesta, resolvedIdRespuesta, idIndicador, onEvidenciaChange])
+
+    const handleCancelDelete = useCallback(() => {
+        setShowDeleteDialog(false)
+    }, [])
 
     const handleClickUpload = () => {
         fileInputRef.current?.click()
@@ -311,7 +336,7 @@ export function EvidenciaUpload({
                             type="button"
                             variant="ghost"
                             size="sm"
-                            onClick={handleDelete}
+                            onClick={handleDeleteClick}
                             disabled={isDeleting}
                             className="h-7 px-2 text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
                             title="Eliminar evidencia"
@@ -363,7 +388,7 @@ export function EvidenciaUpload({
                 </p>
             )}
 
-            {/* Diálogo de confirmación */}
+            {/* Diálogo de confirmación de subida */}
             <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
@@ -407,6 +432,56 @@ export function EvidenciaUpload({
                             onClick={handleConfirmUpload}
                         >
                             Sí, subir archivo
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Diálogo de confirmación de eliminación */}
+            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+                                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-500" />
+                            </div>
+                            <DialogTitle className="text-lg">Confirmar eliminación</DialogTitle>
+                        </div>
+                        <DialogDescription className="text-base pt-2">
+                            ¿Estás seguro de que deseas eliminar esta evidencia?
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    {nombreArchivo && (
+                        <div className="py-3 px-4 rounded-md bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                            <div className="flex items-center gap-2">
+                                <Trash2 className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-red-700 dark:text-red-300 truncate" title={nombreArchivo}>
+                                        {nombreArchivo}
+                                    </p>
+                                    <p className="text-xs text-red-600 dark:text-red-400">
+                                        Esta acción no se puede deshacer
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleCancelDelete}
+                        >
+                            No, cancelar
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={handleConfirmDelete}
+                            className="bg-red-600 hover:bg-red-700 text-white dark:bg-red-700 dark:hover:bg-red-800"
+                        >
+                            Sí, eliminar evidencia
                         </Button>
                     </DialogFooter>
                 </DialogContent>
