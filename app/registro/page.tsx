@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Eye, EyeOff } from "lucide-react"
+import Image from "next/image"
 import { registrarBodega } from "@/lib/api/auth"
 import {
   getProvincias,
@@ -384,8 +385,14 @@ export default function RegistroPage() {
       <Card className="relative z-10 w-full max-w-2xl overflow-hidden p-0 shadow-2xl border-0">
         <CardHeader className="bg-white border-b p-8">
           <div className="flex justify-center mb-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/assets/logos/logocolorhorz.png" alt="Coviar" className="h-20 object-contain" />
+            <Image
+              src="/assets/logos/logoletraoscura.png"
+              alt="Coviar"
+              width={500}
+              height={200}
+              className="h-52 w-auto object-contain"
+              priority
+            />
           </div>
           <CardTitle className="text-2xl text-center font-serif text-coviar-borravino font-bold">Registro de Bodega</CardTitle>
           <CardDescription className="text-gray-500 text-center">

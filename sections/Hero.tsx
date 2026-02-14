@@ -30,8 +30,13 @@ const Hero = () => {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <a href="#introduccion" className="text-white border border-white/40 hover:border-white px-8 py-4 rounded-md font-medium transition duration-300 hover:bg-white/10 uppercase tracking-wide text-sm">
-            Más información
+          <a
+            href="/documents/Guia-Sostenibilidad-Enoturistica-Argentina.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-white border border-white/40 hover:border-white px-8 py-4 rounded-md font-medium transition duration-300 hover:bg-white/10 uppercase tracking-wide text-sm"
+          >
+            Descargar Guia de Sostenibilidad Enoturística Argentina
           </a>
         </div>
       </div>
