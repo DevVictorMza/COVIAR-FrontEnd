@@ -1,11 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { solicitarRestablecimientoPassword } from "@/lib/api/auth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, UserMinus, UserPlus, AlertTriangle } from "lucide-react"
+import { Loader2, UserMinus, UserPlus, AlertTriangle, Key } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -100,6 +101,9 @@ export default function ConfiguracionPage() {
     cargo: "",
     dni: ""
   })
+
+  // Estado para cambio de contraseña
+  const [isSendingPasswordReset, setIsSendingPasswordReset] = useState(false)
 
   const [formData, setFormData] = useState<FormData>({
     admin_first_name: "",
@@ -372,6 +376,36 @@ export default function ConfiguracionPage() {
     setError(null)
   }
 
+  const handleCambiarContrasena = async () => {
+    setIsSendingPasswordReset(true)
+    setError(null)
+
+    try {
+      const usuarioStr = localStorage.getItem('usuario')
+      if (!usuarioStr) {
+        setError("No se encontró información de sesión")
+        return
+      }
+
+      const usuario: CuentaConBodega = JSON.parse(usuarioStr)
+      const email = usuario.email_login
+
+      if (!email) {
+        setError("No se encontró el email del usuario")
+        return
+      }
+
+      await solicitarRestablecimientoPassword(email)
+      setSuccessMessage("Se ha enviado un correo con instrucciones para cambiar tu contraseña")
+
+    } catch (err) {
+      console.error('Error solicitando cambio de contraseña:', err)
+      setError(err instanceof Error ? err.message : "Error al solicitar cambio de contraseña")
+    } finally {
+      setIsSendingPasswordReset(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="p-8 flex items-center justify-center min-h-[400px]">
@@ -600,6 +634,44 @@ export default function ConfiguracionPage() {
               {formData.calle ? `${formData.calle} ${formData.numeracion}` : "-"}
             </p>
             <p className="text-xs text-muted-foreground mt-1">No editable</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Seguridad</CardTitle>
+          <CardDescription>Gestiona la seguridad de tu cuenta</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-start justify-between p-4 border rounded-lg">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <Key className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold">Contraseña</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Solicita un cambio de contraseña. Recibirás un correo electrónico con instrucciones para establecer una nueva contraseña.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={handleCambiarContrasena}
+              disabled={isSendingPasswordReset || isEditing}
+              className="ml-4 shrink-0"
+            >
+              {isSendingPasswordReset ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <Key className="mr-2 h-4 w-4" />
+                  Cambiar Contraseña
+                </>
+              )}
+            </Button>
           </div>
         </CardContent>
       </Card>
