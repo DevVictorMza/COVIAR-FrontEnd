@@ -409,7 +409,6 @@ function LocalChapterCard({ capitulo, idAutoevaluacion }: { capitulo: CapituloLo
                                 
                                 {/* Sección de Evidencias */}
                                 <div className="mt-3">
-                                    {/* Temporal: Mostrar siempre el botón para testear el modal */}
                                     {indicador.tiene_evidencia && indicador.id_respuesta ? (
                                         <Button
                                             type="button"
@@ -427,22 +426,6 @@ function LocalChapterCard({ capitulo, idAutoevaluacion }: { capitulo: CapituloLo
                                             {downloadingIds.has(indicador.id_indicador) 
                                                 ? 'Descargando...' 
                                                 : 'Descargar Evidencia (PDF)'}
-                                        </Button>
-                                    ) : indicador.respuesta ? (
-                                        /* Botón de prueba temporal - habilitar para testear el modal */
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => handleOpenDownloadModal(
-                                                indicador.id_indicador, 
-                                                999, // ID temporal para prueba
-                                                indicador.nombre
-                                            )}
-                                            className="gap-2 text-sm border-dashed"
-                                        >
-                                            <Download className="h-4 w-4" />
-                                            Testear Modal de Descarga
                                         </Button>
                                     ) : (
                                         <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 border border-dashed border-muted-foreground/30">
