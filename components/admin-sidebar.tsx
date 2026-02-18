@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button"
 
 const navigation = [
   { name: "Inicio", href: "/admin", icon: Home },
-  { name: "Gestión de autoevaluaciones", href: "/admin/gestion-autoevaluacion", icon: BarChart3 },
+  { name: "Gestión de autoevaluaciones", href: "/admin/visualizacion-autoevaluaciones", icon: BarChart3 },
+  {name: "Gestión de bodegas", href: "/admin/gestion-bodegas", icon: Users}
 ]
 
 const bottomNavigation = [
