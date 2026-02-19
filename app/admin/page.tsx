@@ -72,7 +72,7 @@ export default function AdminDashboard() {
 
   const smallCharts = [
     {
-      title: "Bodegas con nivel mínimo de sostenibilidad",
+      title: "Autoevaluaciones con nivel mínimo de sostenibilidad",
       value: dist.minimo,
       color: COLORS.minimo,
       data: [
@@ -81,7 +81,7 @@ export default function AdminDashboard() {
       ],
     },
     {
-      title: "Bodegas con nivel medio de sostenibilidad",
+      title: "Autoevaluaciones con nivel medio de sostenibilidad",
       value: dist.medio,
       color: COLORS.medio,
       data: [
@@ -90,7 +90,7 @@ export default function AdminDashboard() {
       ],
     },
     {
-      title: "Bodegas con nivel alto de sostenibilidad",
+      title: "Autoevaluaciones con nivel alto de sostenibilidad",
       value: dist.alto,
       color: COLORS.alto,
       data: [
@@ -270,7 +270,7 @@ export default function AdminDashboard() {
                         {chart.value}
                       </span>
                       <span className="text-xs text-gray-400">
-                        {chart.value === 1 ? "bodega" : "bodegas"}
+                        {chart.value === 1 ? "evaluación" : "evaluaciones"}
                       </span>
                     </div>
                   </div>
