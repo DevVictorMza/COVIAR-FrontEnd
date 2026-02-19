@@ -8,6 +8,19 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
+    Dialog,
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
+import {
     Award,
     Calendar,
     Building2,
@@ -96,8 +109,10 @@ interface IndicadorLocal {
         puntos: number
     } | null
     puntaje_maximo: number
+    // Campos de evidencia
+    id_respuesta?: number | null
     tiene_evidencia?: boolean
-    id_respuesta?: number
+    nombre_archivo_evidencia?: string | null
 }
 
 interface CapituloLocalConIndicadores {
@@ -115,36 +130,66 @@ interface CapituloLocalConIndicadores {
 function LocalChapterCard({ capitulo, idAutoevaluacion }: { capitulo: CapituloLocalConIndicadores; idAutoevaluacion: string }) {
     const [isExpanded, setIsExpanded] = useState(false)
     const [downloadingIds, setDownloadingIds] = useState<Set<number>>(new Set())
+    const [showDownloadModal, setShowDownloadModal] = useState(false)
+    const [pendingDownload, setPendingDownload] = useState<{ idIndicador: number; idRespuesta: number; nombreIndicador: string } | null>(null)
     const color = getChapterColor(capitulo.nombre)
     const icon = getChapterIcon(capitulo.nombre)
     const hasIndicadores = capitulo.indicadores && capitulo.indicadores.length > 0
 
-    const handleDescargarEvidencia = async (idIndicador: number, idRespuesta: number) => {
+    const handleOpenDownloadModal = (idIndicador: number, idRespuesta: number, nombreIndicador: string) => {
+        if (!idRespuesta || !idAutoevaluacion) {
+            console.error('Error: ID de respuesta o autoevaluación no válido')
+            alert('No se pudo descargar la evidencia. Información incompleta.')
+            return
+        }
+        setPendingDownload({ idIndicador, idRespuesta, nombreIndicador })
+        setShowDownloadModal(true)
+    }
+
+    const handleConfirmDownload = async () => {
+        if (!pendingDownload) return
+
+        const { idIndicador, idRespuesta } = pendingDownload
+        setShowDownloadModal(false)
         setDownloadingIds(prev => new Set(prev).add(idIndicador))
+        
         try {
             await descargarEvidencia(idAutoevaluacion, idRespuesta)
         } catch (error) {
             console.error('Error al descargar evidencia:', error)
-            alert(error instanceof Error ? error.message : 'Error al descargar la evidencia')
+            const errorMessage = error instanceof Error 
+                ? error.message 
+                : 'Error desconocido al descargar la evidencia'
+            alert(`No se pudo descargar la evidencia: ${errorMessage}`)
         } finally {
             setDownloadingIds(prev => {
                 const newSet = new Set(prev)
                 newSet.delete(idIndicador)
                 return newSet
             })
+            setPendingDownload(null)
         }
     }
 
+    const handleCancelDownload = () => {
+        setShowDownloadModal(false)
+        setPendingDownload(null)
+    }
+
     return (
+        <>
         <Card
-            className="overflow-hidden transition-all duration-300 hover:shadow-lg border-l-4"
+            className="overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.01] border-l-4"
             style={{ borderLeftColor: color }}
         >
-            <CardHeader
-                className={hasIndicadores ? "cursor-pointer select-none" : ""}
-                onClick={() => hasIndicadores && setIsExpanded(!isExpanded)}
-            >
-                <div className="flex items-center justify-between">
+            <TooltipProvider>
+                <Tooltip delayDuration={300}>
+                    <TooltipTrigger asChild>
+                        <CardHeader
+                            className={hasIndicadores ? "cursor-pointer select-none hover:bg-muted/30 transition-colors" : ""}
+                            onClick={() => hasIndicadores && setIsExpanded(!isExpanded)}
+                        >
+                            <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div
                             className="p-2 rounded-lg"
@@ -176,15 +221,29 @@ function LocalChapterCard({ capitulo, idAutoevaluacion }: { capitulo: CapituloLo
                             {Math.round(capitulo.porcentaje)}%
                         </div>
                         {hasIndicadores && (
-                            isExpanded ? (
-                                <ChevronUp className="h-5 w-5 text-muted-foreground" />
-                            ) : (
-                                <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                            )
+                            <div className="flex items-center gap-2">
+                                <Download className="h-4 w-4 text-[#880D1E]" />
+                                {isExpanded ? (
+                                    <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                                ) : (
+                                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                                )}
+                            </div>
                         )}
                     </div>
                 </div>
             </CardHeader>
+                    </TooltipTrigger>
+                    {hasIndicadores && (
+                        <TooltipContent side="left" className="bg-[#880D1E] text-white border-[#880D1E] px-4 py-2">
+                            <div className="flex items-center gap-2">
+                                <Download className="h-4 w-4" />
+                                <p className="font-semibold text-sm">Descargar Archivo</p>
+                            </div>
+                        </TooltipContent>
+                    )}
+                </Tooltip>
+            </TooltipProvider>
 
             {isExpanded && hasIndicadores && (
                 <CardContent className="pt-0">
@@ -243,7 +302,11 @@ function LocalChapterCard({ capitulo, idAutoevaluacion }: { capitulo: CapituloLo
                                             type="button"
                                             variant="outline"
                                             size="sm"
-                                            onClick={() => handleDescargarEvidencia(indicador.id_indicador, indicador.id_respuesta!)}
+                                            onClick={() => handleOpenDownloadModal(
+                                                indicador.id_indicador, 
+                                                indicador.id_respuesta!,
+                                                indicador.nombre
+                                            )}
                                             disabled={downloadingIds.has(indicador.id_indicador)}
                                             className="gap-2 text-sm"
                                         >
@@ -275,6 +338,76 @@ function LocalChapterCard({ capitulo, idAutoevaluacion }: { capitulo: CapituloLo
                 </CardContent>
             )}
         </Card>
+
+        {/* Modal Premium de Confirmación de Descarga */}
+        <Dialog open={showDownloadModal} onOpenChange={setShowDownloadModal}>
+            <DialogContent className="sm:max-w-[500px] border-2 border-[#880D1E]/50 shadow-2xl">
+                {/* Header con gradiente institucional */}
+                <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#880D1E] via-[#B89B5E] to-[#880D1E]" />
+                
+                <DialogHeader className="pt-6 space-y-4">
+                    <div className="mx-auto relative">
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#880D1E] to-[#6d0a18] rounded-full blur-xl opacity-30 animate-pulse" />
+                        <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-[#880D1E] to-[#6d0a18] flex items-center justify-center shadow-lg">
+                            <Download className="h-10 w-10 text-white" />
+                        </div>
+                    </div>
+                    
+                    <DialogTitle className="text-2xl font-bold text-center text-black">
+                        Descargar Evidencia
+                    </DialogTitle>
+                </DialogHeader>
+                
+                {/* 
+                    IMPORTANTE: No usar DialogDescription aquí
+                    
+                    DialogDescription se renderiza como un elemento <p> (párrafo) en HTML.
+                    Según las reglas de HTML, un <p> NO puede contener elementos de bloque como <div>.
+                    Esto causa errores de hidratación en React/Next.js.
+                    
+                    Solución: Usar un <div> directamente con elementos <p> internos para textos.
+                    Estructura válida: div > p (texto) + div (tarjeta) + p (texto)
+                */}
+                <div className="text-center space-y-3 py-4">
+                    <p className="text-base text-black font-medium">
+                        Se descargará la evidencia en formato PDF del siguiente indicador:
+                    </p>
+                    
+                    {pendingDownload && (
+                        <div className="p-4 bg-gradient-to-br from-[#B89B5E]/10 to-[#880D1E]/5 rounded-lg border-2 border-[#B89B5E]/50 shadow-sm">
+                            <p className="text-sm font-semibold text-black flex items-center gap-2 justify-center">
+                                <Award className="h-4 w-4 text-[#880D1E]" />
+                                {pendingDownload.nombreIndicador}
+                            </p>
+                        </div>
+                    )}
+                    
+                    <p className="pt-2 text-sm text-black">
+                        La descarga comenzará automáticamente al confirmar
+                    </p>
+                </div>
+
+                <DialogFooter className="gap-2 sm:gap-0 pt-4">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleCancelDownload}
+                        className="border-2 hover:bg-muted/50 transition-all duration-200 text-black hover:text-black"
+                    >
+                        Cancelar
+                    </Button>
+                    <Button
+                        type="button"
+                        onClick={handleConfirmDownload}
+                        className="bg-gradient-to-r from-[#880D1E] to-[#6d0a18] hover:from-[#6d0a18] hover:to-[#880D1E] text-white shadow-lg hover:shadow-xl transition-all duration-300 gap-2 border-none"
+                    >
+                        <Download className="h-4 w-4" />
+                        Descargar Ahora
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+        </>
     )
 }
 
@@ -426,6 +559,15 @@ export default function ResultadosPage() {
 
                 // Obtener resultados detallados con capítulos
                 const resultadosDetallados = await obtenerResultadosAutoevaluacion(ultimaEvaluacion.id_autoevaluacion)
+                
+                // Debug: ver qué datos llegan del backend
+                console.log('📊 Datos completos del backend:', resultadosDetallados)
+                if (resultadosDetallados.capitulos && resultadosDetallados.capitulos[0]) {
+                    console.log('📋 Ejemplo de capítulo:', resultadosDetallados.capitulos[0])
+                    if (resultadosDetallados.capitulos[0].indicadores && resultadosDetallados.capitulos[0].indicadores[0]) {
+                        console.log('📌 Ejemplo de indicador:', resultadosDetallados.capitulos[0].indicadores[0])
+                    }
+                }
 
                 // Formatear respuesta de API a formato ResultadoLocal
                 const resultadoFormateado: ResultadoLocal = {
@@ -437,15 +579,41 @@ export default function ResultadosPage() {
                     segmento: ultimaEvaluacion.nombre_segmento || 'N/A',
                     nombre_bodega: usuario.bodega?.nombre_fantasia || 'N/A',
                     responsable: `${usuario.responsable?.nombre || ''} ${usuario.responsable?.apellido || ''}`.trim() || 'N/A',
-                    capitulos: resultadosDetallados.capitulos?.map(cap => ({
-                        id_capitulo: cap.id_capitulo,
-                        nombre: cap.nombre,
-                        puntaje_obtenido: cap.puntaje_obtenido || 0,
-                        puntaje_maximo: cap.puntaje_maximo || 0,
-                        porcentaje: cap.porcentaje || 0,
-                        indicadores_completados: cap.indicadores_completados || 0,
-                        indicadores_total: cap.indicadores_total || 0,
-                    })) || [],
+                    capitulos: resultadosDetallados.capitulos?.map(cap => {
+                        const capituloFormateado = {
+                            id_capitulo: cap.id_capitulo,
+                            nombre: cap.nombre,
+                            puntaje_obtenido: cap.puntaje_obtenido || 0,
+                            puntaje_maximo: cap.puntaje_maximo || 0,
+                            porcentaje: cap.porcentaje || 0,
+                            indicadores_completados: cap.indicadores_completados || 0,
+                            indicadores_total: cap.indicadores_total || 0,
+                            // Mapear indicadores con evidencias si están disponibles
+                            indicadores: cap.indicadores?.map(ind => {
+                                const indicadorAny = ind as any
+                                const indicadorFormateado = {
+                                    id_indicador: ind.id_indicador,
+                                    nombre: ind.nombre,
+                                    descripcion: ind.descripcion,
+                                    orden: ind.orden,
+                                    respuesta: {
+                                        id_nivel_respuesta: indicadorAny.id_nivel_respuesta || 0,
+                                        nombre: ind.respuesta_nombre || '',
+                                        descripcion: ind.respuesta_descripcion || '',
+                                        puntos: ind.respuesta_puntos || 0
+                                    },
+                                    puntaje_maximo: ind.puntaje_maximo,
+                                    // Incluir campos de evidencia - probar diferentes nombres de propiedades que el backend podría usar
+                                    id_respuesta: indicadorAny.id_respuesta || indicadorAny.idRespuesta || indicadorAny.respuesta_id,
+                                    tiene_evidencia: indicadorAny.tiene_evidencia || indicadorAny.tieneEvidencia || false,
+                                    nombre_archivo_evidencia: indicadorAny.nombre_archivo_evidencia || indicadorAny.nombreArchivoEvidencia || indicadorAny.archivo_evidencia
+                                }
+                                console.log(`📝 Indicador mapeado "${ind.nombre}":`, indicadorFormateado)
+                                return indicadorFormateado
+                            }) || []
+                        }
+                        return capituloFormateado
+                    }) || [],
                     nivel_sostenibilidad: ultimaEvaluacion.nivel_sostenibilidad?.nombre || 'BÁSICO'
                 }
 
@@ -528,7 +696,7 @@ export default function ResultadosPage() {
                     {/* Fecha Card */}
                     <div className="group relative">
                         <div className="absolute inset-0 bg-gradient-to-r from-[#B89B5E] to-[#d4b76f] rounded-lg blur opacity-20 group-hover:opacity-35 transition duration-300"></div>
-                        <div className="relative flex items-center gap-3 px-5 py-3 bg-white border-2 border-[#B89B5E]/30 rounded-lg shadow-md hover:shadow-lg hover:border-[#B89B5E]/50 transition-all duration-300">
+                        <div className="relative flex items-center gap-3 px-5 py-3 bg-white border-2 border-[#B89B5E]/50 rounded-lg shadow-md hover:shadow-lg hover:border-[#B89B5E]/70 transition-all duration-300">
                             <div className="p-2 bg-gradient-to-br from-[#B89B5E]/10 to-[#B89B5E]/5 rounded-md">
                                 <Calendar className="h-5 w-5 text-[#B89B5E]" />
                             </div>
@@ -539,7 +707,7 @@ export default function ResultadosPage() {
                     {/* Responsable Card */}
                     <div className="group relative">
                         <div className="absolute inset-0 bg-gradient-to-r from-[#B89B5E] to-[#d4b76f] rounded-lg blur opacity-20 group-hover:opacity-35 transition duration-300"></div>
-                        <div className="relative flex items-center gap-3 px-5 py-3 bg-white border-2 border-[#B89B5E]/30 rounded-lg shadow-md hover:shadow-lg hover:border-[#B89B5E]/50 transition-all duration-300">
+                        <div className="relative flex items-center gap-3 px-5 py-3 bg-white border-2 border-[#B89B5E]/50 rounded-lg shadow-md hover:shadow-lg hover:border-[#B89B5E]/70 transition-all duration-300">
                             <div className="p-2 bg-gradient-to-br from-[#B89B5E]/10 to-[#B89B5E]/5 rounded-md">
                                 <Users className="h-5 w-5 text-[#B89B5E]" />
                             </div>
@@ -565,7 +733,7 @@ export default function ResultadosPage() {
             {/* Tarjetas de resumen */}
             <div className="grid gap-4 md:grid-cols-3">
                 {/* Puntaje Final */}
-                <Card className="relative overflow-hidden border-2 border-[#880D1E]/20 shadow-sm">
+                <Card className="relative overflow-hidden border-2 border-[#880D1E]/50 shadow-sm">
                     <div
                         className="absolute inset-0 opacity-5"
                         style={{
@@ -596,7 +764,7 @@ export default function ResultadosPage() {
                 </Card>
 
                 {/* Nivel de Sustentabilidad */}
-                <Card className="relative overflow-hidden border-2 shadow-sm" style={{ borderColor: `${nivelInfo.color}30` }}>
+                <Card className="relative overflow-hidden border-2 shadow-sm" style={{ borderColor: `${nivelInfo.color}50` }}>
                     <div
                         className="absolute inset-0 opacity-5"
                         style={{
@@ -627,7 +795,7 @@ export default function ResultadosPage() {
                 </Card>
 
                 {/* Segmento */}
-                <Card className="relative overflow-hidden border-2 border-[#B89B5E]/20 shadow-sm">
+                <Card className="relative overflow-hidden border-2 border-[#B89B5E]/50 shadow-sm">
                     <div
                         className="absolute inset-0 opacity-5"
                         style={{

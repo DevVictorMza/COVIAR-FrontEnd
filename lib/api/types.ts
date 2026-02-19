@@ -337,12 +337,15 @@ export interface ResultadosAutoevaluacionError {
 
 export interface Evidencia {
   id_evidencia: number
-  id_autoevaluacion: number
-  id_indicador: number
-  nombre_archivo: string
-  tipo_archivo: string
-  tamano: number
-  fecha_subida: string
+  id_autoevaluacion?: number
+  id_indicador?: number
+  id_respuesta?: number
+  nombre_archivo?: string  // Algunos backends usan este campo
+  nombre?: string          // Otros backends usan este campo
+  tipo_archivo?: string
+  tamano?: number
+  fecha_subida?: string
+  ubicacion?: string
   url?: string
 }
 
