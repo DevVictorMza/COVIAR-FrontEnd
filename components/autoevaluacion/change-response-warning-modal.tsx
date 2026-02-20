@@ -19,6 +19,21 @@ interface ChangeResponseWarningModalProps {
     isProcessing?: boolean
 }
 
+// Función para truncar nombres de archivo largos
+function truncateFileName(fileName: string, maxLength: number = 35): string {
+    if (fileName.length <= maxLength) return fileName;
+    
+    const extension = fileName.lastIndexOf('.') > 0 
+        ? fileName.slice(fileName.lastIndexOf('.')) 
+        : '';
+    const nameWithoutExt = fileName.slice(0, fileName.length - extension.length);
+    const charsToShow = maxLength - extension.length - 3; // 3 for "..."
+    const frontChars = Math.ceil(charsToShow / 2);
+    const backChars = Math.floor(charsToShow / 2);
+    
+    return `${nameWithoutExt.slice(0, frontChars)}...${nameWithoutExt.slice(-backChars)}${extension}`;
+}
+
 export function ChangeResponseWarningModal({
     isOpen,
     onClose,
@@ -26,6 +41,8 @@ export function ChangeResponseWarningModal({
     nombreArchivo,
     isProcessing = false
 }: ChangeResponseWarningModalProps) {
+    const displayFileName = truncateFileName(nombreArchivo);
+    
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-md p-0 gap-0 bg-white border-0 shadow-2xl rounded-xl overflow-hidden">
@@ -50,7 +67,7 @@ export function ChangeResponseWarningModal({
                     </div>
 
                     {/* Contenido principal */}
-                    <div className="px-6 py-5 space-y-4">
+                    <div className="px-6 py-5 space-y-4 overflow-hidden">
                         {/* Mensaje principal */}
                         <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg">
                             <p className="text-sm text-gray-700 leading-relaxed">
@@ -60,7 +77,7 @@ export function ChangeResponseWarningModal({
                         </div>
 
                         {/* Archivo que será eliminado */}
-                        <div className="flex items-start gap-3 p-4 bg-red-50 rounded-lg border border-red-200">
+                        <div className="flex items-start gap-3 p-4 bg-red-50 rounded-lg border border-red-200 overflow-hidden">
                             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 shrink-0">
                                 <FileX className="h-5 w-5 text-red-600" />
                             </div>
@@ -68,8 +85,8 @@ export function ChangeResponseWarningModal({
                                 <p className="text-xs font-semibold text-red-900 uppercase tracking-wide mb-1">
                                     Evidencia a eliminar
                                 </p>
-                                <p className="text-sm text-red-800 font-medium truncate" title={nombreArchivo}>
-                                    {nombreArchivo}
+                                <p className="text-sm text-red-800 font-medium break-all" title={nombreArchivo}>
+                                    {displayFileName}
                                 </p>
                             </div>
                         </div>
