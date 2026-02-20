@@ -6,7 +6,10 @@ import { Building2, FileCheck, AlertCircle } from "lucide-react"
 import { getAdminStats, type AdminStats } from "@/lib/api/admin"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts"
+import {
+  PieChart, Pie, Cell, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
+} from "recharts"
 
 // ─── Colores por nivel ─────────────────────────────────────────────────────────
 
@@ -23,7 +26,39 @@ const NIVEL_COLOR: Record<string, string> = {
   "Nivel alto de sostenibilidad":   COLORS.alto,
 }
 
-// ─── Tooltip personalizado ─────────────────────────────────────────────────────
+// ─── Tipos para distribución por tipo de bodega ────────────────────────────────
+
+interface NivelesPorTipo {
+  alto:   number
+  medio:  number
+  minimo: number
+}
+
+// Tipos de bodega en el orden deseado
+const TIPOS_BODEGA: { key: string; label: string }[] = [
+  { key: "microArtesanal",  label: "Micro Bodega Turística / Artesanal" },
+  { key: "pequeña",         label: "Pequeña Bodega Turística" },
+  { key: "mediana",         label: "Mediana Bodega Turística" },
+  { key: "bodega",          label: "Bodega Turística" },
+  { key: "gran",            label: "Gran Bodega Turística" },
+]
+
+// ─── Tooltip personalizado para el BarChart ────────────────────────────────────
+
+function BarTooltip({ active, payload }: { active?: boolean; payload?: any[] }) {
+  if (active && payload?.length) {
+    const { name, value } = payload[0]
+    return (
+      <div className="bg-gray-900 text-white rounded-lg shadow-xl px-3 py-2 text-xs">
+        <p className="font-semibold">{name}</p>
+        <p>{value} {value === 1 ? "bodega" : "bodegas"}</p>
+      </div>
+    )
+  }
+  return null
+}
+
+// ─── Tooltip personalizado para el PieChart general ───────────────────────────
 
 function CustomTooltip({ active, payload }: { active?: boolean; payload?: any[] }) {
   if (active && payload?.length && payload[0].name !== "Resto") {
@@ -70,38 +105,11 @@ export default function AdminDashboard() {
     { name: "Nivel alto de sostenibilidad",   value: dist.alto,   color: COLORS.alto   },
   ]
 
-  const smallCharts = [
-    {
-      title: "Autoevaluaciones con nivel mínimo de sostenibilidad",
-      value: dist.minimo,
-      color: COLORS.minimo,
-      data: [
-        { name: "Nivel mínimo de sostenibilidad", value: dist.minimo,                 color: COLORS.minimo },
-        { name: "Resto",                           value: totalConNivel - dist.minimo, color: COLORS.vacio  },
-      ],
-    },
-    {
-      title: "Autoevaluaciones con nivel medio de sostenibilidad",
-      value: dist.medio,
-      color: COLORS.medio,
-      data: [
-        { name: "Nivel medio de sostenibilidad",  value: dist.medio,                  color: COLORS.medio  },
-        { name: "Resto",                           value: totalConNivel - dist.medio,  color: COLORS.vacio  },
-      ],
-    },
-    {
-      title: "Autoevaluaciones con nivel alto de sostenibilidad",
-      value: dist.alto,
-      color: COLORS.alto,
-      data: [
-        { name: "Nivel alto de sostenibilidad",   value: dist.alto,                   color: COLORS.alto   },
-        { name: "Resto",                           value: totalConNivel - dist.alto,   color: COLORS.vacio  },
-      ],
-    },
-  ]
-
-  const nivelColor = NIVEL_COLOR[stats?.nivelPromedio ?? ""] ?? "#374151"
   const sinDatos = [{ name: "Sin datos", value: 1, color: COLORS.vacio }]
+  const nivelColor = NIVEL_COLOR[stats?.nivelPromedio ?? ""] ?? "#374151"
+
+  const distribucionPorTipo: Record<string, NivelesPorTipo> =
+    (stats as any)?.distribucionPorTipo ?? {}
 
   return (
     <div className="p-8 space-y-8">
@@ -172,7 +180,6 @@ export default function AdminDashboard() {
               <Skeleton className="h-56 w-56 rounded-full mx-auto" />
             ) : (
               <>
-                {/* Contenedor relativo para superponer el label central */}
                 <div className="relative w-full" style={{ height: 240 }}>
                   <ResponsiveContainer width="100%" height={240}>
                     <PieChart>
@@ -194,11 +201,9 @@ export default function AdminDashboard() {
                           <Cell key={i} fill={entry.color} />
                         ))}
                       </Pie>
-                      
                     </PieChart>
                   </ResponsiveContainer>
 
-                  {/* Label central superpuesto con div absoluto */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="text-center px-8" style={{ maxWidth: 150 }}>
                       <p className="text-xs font-bold leading-snug" style={{ color: nivelColor }}>
@@ -208,7 +213,6 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                {/* Leyenda */}
                 <div className="flex flex-wrap justify-center gap-4 mt-2">
                   {dataGeneral.map((d) => (
                     <div key={d.name} className="flex items-center gap-1.5">
@@ -225,66 +229,64 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      {/* ── Fila inferior: 3 gráficos por nivel ── */}
-      <div className="grid md:grid-cols-3 gap-6">
-        {smallCharts.map((chart) => (
-          <Card key={chart.title} className="bg-white border border-gray-200 shadow-sm">
-            <CardHeader className="pb-1">
-              <CardTitle className="text-xs font-bold text-gray-700 text-center leading-tight">
-                {chart.title}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center pt-2 pb-4">
-              {isLoading ? (
-                <Skeleton className="h-36 w-36 rounded-full" />
-              ) : (
-                <>
-                  <div className="relative" style={{ width: 160, height: 160 }}>
-                    <ResponsiveContainer width={160} height={160}>
-                      <PieChart>
-                        <Pie
-                          data={totalConNivel === 0 ? sinDatos : chart.data}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={50}
-                          outerRadius={72}
-                          dataKey="value"
-                          startAngle={90}
-                          endAngle={-270}
-                          animationBegin={200}
-                          animationDuration={900}
-                          animationEasing="ease-out"
-                          stroke="none"
-                        >
-                          {(totalConNivel === 0 ? sinDatos : chart.data).map((entry, i) => (
-                            <Cell key={i} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        
-                      </PieChart>
-                    </ResponsiveContainer>
+      {/* ── Fila inferior: 5 gráficos de barras por tipo de bodega ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {TIPOS_BODEGA.map(({ key, label }) => {
+          const niveles = distribucionPorTipo[key] ?? { alto: 0, medio: 0, minimo: 0 }
 
-                    {/* Número central superpuesto */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                      <span className="text-2xl font-bold" style={{ color: chart.color }}>
-                        {chart.value}
-                      </span>
-                      <span className="text-xs text-gray-400">
-                        {chart.value === 1 ? "evaluación" : "evaluaciones"}
-                      </span>
-                    </div>
-                  </div>
+          const barData = [
+            { nivel: "Alto",  name: "Nivel alto de sostenibilidad",   value: niveles.alto,   fill: COLORS.alto   },
+            { nivel: "Medio", name: "Nivel medio de sostenibilidad",   value: niveles.medio,  fill: COLORS.medio  },
+            { nivel: "Bajo",  name: "Nivel mínimo de sostenibilidad",  value: niveles.minimo, fill: COLORS.minimo },
+          ]
 
-                  <p className="text-xs text-gray-500 mt-2">
-                    {totalConNivel > 0
-                      ? `${Math.round((chart.value / totalConNivel) * 100)}% del total`
-                      : "Sin datos"}
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+          return (
+            <Card key={key} className="bg-white border border-gray-200 shadow-sm flex flex-col">
+              <CardHeader className="pb-1 px-4 pt-4">
+                <CardTitle className="text-xs font-bold text-gray-700 text-center leading-tight">
+                  {label}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col items-center justify-center pt-2 pb-4 px-2">
+                {isLoading ? (
+                  <Skeleton className="h-36 w-full" />
+                ) : (
+                  <ResponsiveContainer width="100%" height={160}>
+                    <BarChart
+                      data={barData}
+                      margin={{ top: 8, right: 8, left: -24, bottom: 0 }}
+                      barCategoryGap="30%"
+                    >
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                      <XAxis
+                        dataKey="nivel"
+                        tick={{ fontSize: 10, fill: "#6b7280" }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        tick={{ fontSize: 10, fill: "#9ca3af" }}
+                        axisLine={false}
+                        tickLine={false}
+                        width={28}
+                      />
+                      <Tooltip
+                        content={<BarTooltip />}
+                        cursor={{ fill: "rgba(0,0,0,0.04)" }}
+                      />
+                      <Bar dataKey="value" radius={[4, 4, 0, 0]} isAnimationActive={true} animationDuration={700}>
+                        {barData.map((entry, index) => (
+                          <Cell key={index} fill={entry.fill} name={entry.name} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
     </div>
   )
