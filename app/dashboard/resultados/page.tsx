@@ -498,6 +498,7 @@ function ErrorState({ message }: { message: string }) {
 
 interface ResultadoLocal {
     assessmentId: string
+    id_bodega?: number
     puntaje_final: number
     puntaje_maximo: number
     porcentaje: number
@@ -518,20 +519,7 @@ export default function ResultadosPage() {
     useEffect(() => {
         const cargarResultados = async () => {
             try {
-                // Primero intentar cargar desde localStorage para carga rápida
-                const ultimoResultado = localStorage.getItem('ultimo_resultado_completado')
-                if (ultimoResultado) {
-                    try {
-                        const parsed = JSON.parse(ultimoResultado) as ResultadoLocal
-                        setResultadoLocal(parsed)
-                        setIsLoading(false)
-                        return
-                    } catch (e) {
-                        console.error('Error al parsear resultado local:', e)
-                    }
-                }
-
-                // Si no hay en localStorage, consultar la API
+                // Obtener información del usuario actual primero
                 const usuarioStr = localStorage.getItem('usuario')
                 if (!usuarioStr) {
                     setIsLoading(false)
@@ -545,6 +533,28 @@ export default function ResultadosPage() {
                     setIsLoading(false)
                     return
                 }
+
+                // Intentar cargar desde localStorage solo si pertenece al usuario actual
+                const ultimoResultado = localStorage.getItem('ultimo_resultado_completado')
+                if (ultimoResultado) {
+                    try {
+                        const parsed = JSON.parse(ultimoResultado) as ResultadoLocal & { id_bodega?: number }
+                        // Verificar que el resultado pertenece a la bodega del usuario actual
+                        if (parsed.id_bodega && parsed.id_bodega === idBodega) {
+                            setResultadoLocal(parsed)
+                            setIsLoading(false)
+                            return
+                        } else {
+                            // Resultado de otra bodega/usuario, limpiar y consultar API
+                            localStorage.removeItem('ultimo_resultado_completado')
+                        }
+                    } catch (e) {
+                        console.error('Error al parsear resultado local:', e)
+                        localStorage.removeItem('ultimo_resultado_completado')
+                    }
+                }
+
+                // Consultar la API
 
                 // Obtener historial de evaluaciones completadas
                 const historial = await obtenerHistorialAutoevaluaciones(idBodega)
@@ -572,6 +582,7 @@ export default function ResultadosPage() {
                 // Formatear respuesta de API a formato ResultadoLocal
                 const resultadoFormateado: ResultadoLocal = {
                     assessmentId: ultimaEvaluacion.id_autoevaluacion.toString(),
+                    id_bodega: idBodega,
                     puntaje_final: ultimaEvaluacion.puntaje_final || 0,
                     puntaje_maximo: ultimaEvaluacion.puntaje_maximo || 0,
                     porcentaje: ultimaEvaluacion.porcentaje || 0,
