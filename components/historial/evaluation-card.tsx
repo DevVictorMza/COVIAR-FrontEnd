@@ -18,7 +18,7 @@ import {
 } from "lucide-react"
 import type { AutoevaluacionHistorial, ResultadoDetallado } from "@/lib/api/types"
 import { obtenerResultadosAutoevaluacion } from "@/lib/api/autoevaluacion"
-import { determineSustainabilityLevel } from "@/lib/utils/scoring"
+import { getNivelSostenibilidadInfo } from "@/lib/utils/scoring"
 import { ChapterDetails } from "./chapter-details"
 import {
     exportResultadoDetalladoToCSV,
@@ -48,8 +48,8 @@ export function EvaluationCard({
 
     const isRecent = index === 0
     const evaluacionNumero = total - index
-    const nivel = evaluacion.porcentaje !== null
-        ? determineSustainabilityLevel(evaluacion.porcentaje)
+    const nivel = evaluacion.nivel_sostenibilidad?.nombre
+        ? getNivelSostenibilidadInfo(evaluacion.nivel_sostenibilidad.nombre)
         : null
 
     const handleToggleExpand = () => {
