@@ -755,6 +755,7 @@ export default function AutoevaluacionPage() {
       // Usamos calculateChapterScoresWithResponses para incluir los indicadores y respuestas detalladas
       const ultimoResultado = {
         ...resultData,
+        id_bodega: idBodega,
         capitulos: calculateChapterScoresWithResponses(responsesForScoring, estructura, evidencias, respuestaIds),
         nivel_sostenibilidad: nivelCalculado.nombre
       }

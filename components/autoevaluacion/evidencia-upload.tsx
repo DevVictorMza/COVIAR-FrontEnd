@@ -8,6 +8,22 @@ import { subirEvidencia, eliminarEvidencia, guardarRespuestaIndividual, descarga
 
 type EvidenciaStatus = "idle" | "uploading" | "success" | "error" | "has-file"
 
+// Función para truncar nombres de archivo largos
+function truncateFileName(fileName: string | null, maxLength: number = 35): string {
+    if (!fileName) return '';
+    if (fileName.length <= maxLength) return fileName;
+    
+    const extension = fileName.lastIndexOf('.') > 0 
+        ? fileName.slice(fileName.lastIndexOf('.')) 
+        : '';
+    const nameWithoutExt = fileName.slice(0, fileName.length - extension.length);
+    const charsToShow = maxLength - extension.length - 3; // 3 for "..."
+    const frontChars = Math.ceil(charsToShow / 2);
+    const backChars = Math.floor(charsToShow / 2);
+    
+    return `${nameWithoutExt.slice(0, frontChars)}...${nameWithoutExt.slice(-backChars)}${extension}`;
+}
+
 interface EvidenciaUploadProps {
     idAutoevaluacion: string
     idIndicador: number
@@ -508,8 +524,8 @@ export function EvidenciaUpload({
                             <div className="flex items-center gap-2">
                                 <Trash2 className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-red-700 dark:text-red-300 truncate" title={nombreArchivo}>
-                                        {nombreArchivo}
+                                    <p className="text-sm font-medium text-red-700 dark:text-red-300 break-all" title={nombreArchivo}>
+                                        {truncateFileName(nombreArchivo)}
                                     </p>
                                     <p className="text-xs text-red-600 dark:text-red-400">
                                         Esta acción no se puede deshacer

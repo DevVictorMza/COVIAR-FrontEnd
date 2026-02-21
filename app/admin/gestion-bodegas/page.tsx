@@ -8,7 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, Search, Building2, Filter, ChevronLeft, ChevronRight, Loader2, KeyRound } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { AlertCircle, Search, Building2, Filter, ChevronLeft, ChevronRight, Loader2, KeyRound, Eye, EyeOff, Info } from "lucide-react"
 
 interface Bodega {
   id_bodega: number
@@ -17,11 +25,19 @@ interface Bodega {
   cuit: string
   inv_bod: string | null
   inv_vin: string | null
+  telefono: string
   calle: string
   numeracion: string
-  telefono: string
   email_institucional: string
   fecha_registro: string
+  segmento: string | null
+  nivel_sostenibilidad: string | null
+  localidad: string | null
+  departamento: string | null
+  provincia: string | null
+  email_cuenta: string | null
+  fecha_ultima_evaluacion: string | null
+  responsable_activo: string | null
 }
 
 export default function GestionBodegasPage() {
@@ -33,7 +49,20 @@ export default function GestionBodegasPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(25)
-  const [changingPasswordId, setChangingPasswordId] = useState<number | null>(null)
+
+  // Dialog de cambio de contraseña
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [bodegaSeleccionada, setBodegaSeleccionada] = useState<Bodega | null>(null)
+  const [nuevaPassword, setNuevaPassword] = useState("")
+  const [confirmarPassword, setConfirmarPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [cambiandoPassword, setCambiandoPassword] = useState(false)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  // Dialog de más información
+  const [dialogInfoOpen, setDialogInfoOpen] = useState(false)
+  const [bodegaInfo, setBodegaInfo] = useState<Bodega | null>(null)
 
   useEffect(() => {
     fetchBodegas()
@@ -81,23 +110,71 @@ export default function GestionBodegasPage() {
     })
   }
 
-  const handleCambiarContrasena = async (bodega: Bodega) => {
+  const handleAbrirDialog = (bodega: Bodega) => {
+    setBodegaSeleccionada(bodega)
+    setNuevaPassword("")
+    setConfirmarPassword("")
+    setPasswordError(null)
+    setSuccessMessage(null)
+    setShowPassword(false)
+    setDialogOpen(true)
+  }
+
+  const handleCerrarDialog = () => {
+    if (cambiandoPassword) return
+    setDialogOpen(false)
+    setBodegaSeleccionada(null)
+    setNuevaPassword("")
+    setConfirmarPassword("")
+    setPasswordError(null)
+    setSuccessMessage(null)
+  }
+
+  const handleCambiarPassword = async () => {
+    setPasswordError(null)
+
+    if (nuevaPassword.length < 8) {
+      setPasswordError("La contraseña debe tener al menos 8 caracteres")
+      return
+    }
+    if (nuevaPassword !== confirmarPassword) {
+      setPasswordError("Las contraseñas no coinciden")
+      return
+    }
+
+    if (!bodegaSeleccionada) return
+
     try {
-      setChangingPasswordId(bodega.id_bodega)
-      const response = await fetch(`/api/bodegas/${bodega.id_bodega}/reset-password`, {
+      setCambiandoPassword(true)
+      const response = await fetch(`/api/bodegas/${bodegaSeleccionada.id_bodega}/cambiar-password`, {
         method: "POST",
         credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nueva_password: nuevaPassword }),
       })
+
+      const data = await response.json()
+
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || "Error al enviar el correo de cambio de contraseña")
+        setPasswordError(data.message || "Error al cambiar la contraseña")
+        return
       }
+
+      setSuccessMessage("Contraseña actualizada correctamente")
+      setNuevaPassword("")
+      setConfirmarPassword("")
     } catch (err) {
       console.error("Error al cambiar contraseña:", err)
-      setError(err instanceof Error ? err.message : "Error al cambiar contraseña")
+      setPasswordError("Error al conectar con el servidor")
     } finally {
-      setChangingPasswordId(null)
+      setCambiandoPassword(false)
     }
+  }
+
+  //handle para abrir dialog de más información
+  const handleAbrirInfo = (bodega: Bodega) => {
+  setBodegaInfo(bodega)
+  setDialogInfoOpen(true)
   }
 
   const totalPages = Math.ceil(filteredBodegas.length / itemsPerPage)
@@ -203,47 +280,52 @@ export default function GestionBodegasPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Razón Social</TableHead>
-                      <TableHead>Nombre Fantasía</TableHead>
-                      <TableHead>CUIT</TableHead>
-                      <TableHead>INV Bodega</TableHead>
-                      <TableHead>INV Viñedo</TableHead>
-                      <TableHead>Dirección</TableHead>
-                      <TableHead>Teléfono</TableHead>
-                      <TableHead>Email Institucional</TableHead>
-                      <TableHead>Fecha Registro</TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
+                      <TableHead className="text-center">ID</TableHead>
+                      <TableHead className="text-center">Nombre Fantasía</TableHead>
+                      <TableHead className="text-center">CUIT</TableHead>
+                      <TableHead className="text-center">Teléfono</TableHead>
+                      <TableHead className="text-center">Nivel de Sostenibilidad</TableHead>
+                      <TableHead className="text-center">Segmentación</TableHead>
+                      <TableHead className="text-center">Acciones</TableHead>
+                      <TableHead className="text-center">Mas información</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {currentBodegas.map((bodega) => (
-                      <TableRow key={bodega.id_bodega}>
-                        <TableCell className="font-medium">{bodega.id_bodega}</TableCell>
-                        <TableCell>{bodega.razon_social}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{bodega.nombre_fantasia}</TableCell>
-                        <TableCell className="text-sm">{bodega.cuit}</TableCell>
-                        <TableCell className="text-sm">{bodega.inv_bod || "-"}</TableCell>
-                        <TableCell className="text-sm">{bodega.inv_vin || "-"}</TableCell>
-                        <TableCell className="text-sm">
-                          {bodega.calle ? `${bodega.calle} ${bodega.numeracion}` : "-"}
+                      <TableRow key={bodega.id_bodega} className="text-xs">
+                        <TableCell className="text-center font-medium py-2 px-2">{bodega.id_bodega}</TableCell>
+                        <TableCell className="text-center py-2 px-2">{bodega.nombre_fantasia}</TableCell>
+                        <TableCell className="text-center py-2 px-2">{bodega.cuit}</TableCell>
+                        <TableCell className="text-center py-2 px-2">{bodega.telefono || "-"}</TableCell>
+                        <TableCell className="text-center py-2 px-2">
+                          {bodega.nivel_sostenibilidad ?? (
+                            <span className="text-muted-foreground italic">Sin evaluación</span>
+                          )}
                         </TableCell>
-                        <TableCell className="text-sm">{bodega.telefono || "-"}</TableCell>
-                        <TableCell className="text-sm">{bodega.email_institucional}</TableCell>
-                        <TableCell className="text-sm">{formatDate(bodega.fecha_registro)}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-center py-2 px-2">
+                          {bodega.segmento ?? (
+                            <span className="text-muted-foreground italic">Sin evaluación</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center py-2 px-2">
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            onClick={() => handleCambiarContrasena(bodega)}
-                            disabled={changingPasswordId === bodega.id_bodega}
+                            onClick={() => handleAbrirDialog(bodega)}
+                            className="gap-1 h-7 px-2 text-xs"
                           >
-                            {changingPasswordId === bodega.id_bodega ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                              <KeyRound className="h-4 w-4 mr-2" />
-                            )}
-                            {changingPasswordId === bodega.id_bodega ? "Enviando..." : "Cambiar contraseña"}
+                            <KeyRound className="h-3 w-3" />
+                            Cambiar contraseña
+                          </Button>
+                        </TableCell>
+                        <TableCell className="text-center py-2 px-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleAbrirInfo(bodega)}
+                            className="h-7 px-2 text-xs"
+                          >
+                            ...
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -311,6 +393,163 @@ export default function GestionBodegasPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog cambio de contraseña */}
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) handleCerrarDialog() }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cambiar contraseña</DialogTitle>
+            {bodegaSeleccionada && (
+              <p className="text-sm text-muted-foreground">
+                {bodegaSeleccionada.nombre_fantasia} — {bodegaSeleccionada.email_institucional}
+              </p>
+            )}
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {successMessage ? (
+              <div className="rounded-md bg-green-50 border border-green-200 px-4 py-3 text-green-800 text-sm">
+                {successMessage}
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="nueva-password">Nueva contraseña</Label>
+                  <div className="relative">
+                    <Input
+                      id="nueva-password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Mínimo 6 caracteres"
+                      value={nuevaPassword}
+                      onChange={(e) => setNuevaPassword(e.target.value)}
+                      disabled={cambiandoPassword}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirmar-password">Confirmar contraseña</Label>
+                  <Input
+                    id="confirmar-password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Repite la contraseña"
+                    value={confirmarPassword}
+                    onChange={(e) => setConfirmarPassword(e.target.value)}
+                    disabled={cambiandoPassword}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleCambiarPassword() }}
+                  />
+                </div>
+
+                {passwordError && (
+                  <p className="text-sm text-destructive">{passwordError}</p>
+                )}
+              </>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCerrarDialog} disabled={cambiandoPassword}>
+              {successMessage ? "Cerrar" : "Cancelar"}
+            </Button>
+            {!successMessage && (
+              <Button onClick={handleCambiarPassword} disabled={cambiandoPassword}>
+                {cambiandoPassword ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Guardando...
+                  </>
+                ) : (
+                  "Guardar contraseña"
+                )}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog más información */}
+      <Dialog open={dialogInfoOpen} onOpenChange={setDialogInfoOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Información de la Bodega</DialogTitle>
+            {bodegaInfo && (
+              <p className="text-sm text-muted-foreground">
+                {bodegaInfo.nombre_fantasia}
+              </p>
+            )}
+          </DialogHeader>
+
+          {bodegaInfo && (
+            <div className="space-y-3 py-2">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                <div>
+                  <p className="text-muted-foreground font-medium">Razón Social</p>
+                  <p>{bodegaInfo.razon_social || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-medium">INV Bodega</p>
+                  <p>{bodegaInfo.inv_bod || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-medium">INV Viñedo</p>
+                  <p>{bodegaInfo.inv_vin || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-medium">Provincia</p>
+                  <p>{bodegaInfo.provincia || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-medium">Departamento</p>
+                  <p>{bodegaInfo.departamento || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-medium">Localidad</p>
+                  <p>{bodegaInfo.localidad || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-medium">Dirección</p>
+                  <p>{bodegaInfo.calle ? `${bodegaInfo.calle} ${bodegaInfo.numeracion}` : "-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-medium">Responsable Activo</p>
+                  <p>{bodegaInfo.responsable_activo || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-medium">Email Institucional</p>
+                  <p className="break-all">{bodegaInfo.email_institucional || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-medium">Email de Cuenta</p>
+                  <p className="break-all">{bodegaInfo.email_cuenta || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-medium">Fecha de Registro</p>
+                  <p>{formatDate(bodegaInfo.fecha_registro)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-medium">Fecha Última Evaluación</p>
+                  <p>{formatDate(bodegaInfo.fecha_ultima_evaluacion)}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogInfoOpen(false)}>
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   )
 }

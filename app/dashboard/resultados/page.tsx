@@ -36,6 +36,16 @@ import {
     Download,
     FileX
 } from "lucide-react"
+import {
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip as RechartsTooltip,
+    ReferenceLine,
+    ResponsiveContainer,
+} from "recharts"
 import { NivelesSostenibilidadTable } from "@/components/results/niveles-sostenibilidad-table"
 import { getNivelSostenibilidadInfo } from "@/lib/utils/scoring"
 import { descargarEvidencia } from "@/lib/api/autoevaluacion"
@@ -63,6 +73,24 @@ const CHAPTER_COLORS: Record<string, string> = {
     'Gestión Ambiental': '#2F4F3E',
     'Gestión Social': '#B89B5E',
     'Gestión Económica': '#880D1E',
+}
+
+// Puntajes máximos por segmento (límites de referencia)
+const PUNTAJE_MAXIMO_SEGMENTO: Record<string, number> = {
+    'Bodega Turística Artesanal': 51,
+    'Micro Bodega Turística': 51,
+    'micro_bodega': 51,
+    'Bodega Turística Boutique': 69,
+    'Pequeña Bodega Turística': 69,
+    'pequeña': 69,
+    'pequena_bodega': 69,
+    'Mediana Bodega Turística': 96,
+    'mediana': 96,
+    'mediana_bodega': 96,
+    'Bodega Turística': 126,
+    'bodega': 126,
+    'Gran Bodega Turística': 126,
+    'gran_bodega': 126,
 }
 
 function getChapterIcon(nombre: string) {
@@ -94,6 +122,242 @@ function formatDate(dateString: string): string {
     const hours = date.getHours().toString().padStart(2, '0')
     const minutes = date.getMinutes().toString().padStart(2, '0')
     return `${day}/${month}/${year} - ${hours}:${minutes} hs`
+}
+
+// ─── Configuración de líneas de referencia por segmento ──────────────────────
+
+const REFERENCE_LINES = [
+    { label: "Micro / Artesanal",  value: 51,  color: "#f59e0b" },
+    { label: "Pequeña",            value: 69,  color: "#3b82f6" },
+    { label: "Mediana",            value: 96,  color: "#8b5cf6" },
+    { label: "Bodega / Gran",      value: 126, color: "#059669" },
+]
+
+type AgrupacionTipo = "mes" | "año"
+
+const MESES_ES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"]
+
+function formatXLabel(dateString: string, agrupacion: AgrupacionTipo): string {
+    const date = new Date(dateString)
+    if (agrupacion === "año") {
+        return date.getFullYear().toString()
+    }
+    return `${MESES_ES[date.getMonth()]} ${date.getFullYear().toString().slice(-2)}`
+}
+
+// ─── Punto de datos para el gráfico comparativo ───────────────────────────────
+
+interface PuntoComparativa {
+    fecha: string
+    fechaCompleta: string
+    puntaje: number
+    nivelSostenibilidad: string
+}
+
+// ─── Tooltip personalizado para el gráfico comparativo ────────────────────────
+
+function ComparativaTooltip({ active, payload }: { active?: boolean; payload?: any[] }) {
+    if (active && payload?.length) {
+        const data = payload[0].payload as PuntoComparativa
+        return (
+            <div className="bg-white border-2 border-[#880D1E]/30 rounded-lg shadow-xl px-4 py-3 text-sm">
+                <p className="font-bold text-gray-800 mb-1">{data.fechaCompleta}</p>
+                <p className="text-[#880D1E] font-semibold">
+                    Puntaje: <span className="text-gray-800">{data.puntaje} pts</span>
+                </p>
+                <p className="text-[#B89B5E] font-semibold mt-0.5">
+                    Nivel: <span className="text-gray-700">{data.nivelSostenibilidad}</span>
+                </p>
+            </div>
+        )
+    }
+    return null
+}
+
+// ─── Gráfico de Comparativas ──────────────────────────────────────────────────
+
+function ComparativaChart({
+    historial,
+    segmento,
+}: {
+    historial: Array<{ fecha: string; puntaje: number; nivel: string }>
+    segmento: string
+}) {
+    const [agrupacion, setAgrupacion] = useState<AgrupacionTipo>("mes")
+    const [menuOpen, setMenuOpen] = useState(false)
+
+    const limiteSegmento = PUNTAJE_MAXIMO_SEGMENTO[segmento] ?? 126
+
+    const data: PuntoComparativa[] = historial.map((item) => ({
+        fecha: formatXLabel(item.fecha, agrupacion),
+        fechaCompleta: formatDate(item.fecha),
+        puntaje: item.puntaje,
+        nivelSostenibilidad: item.nivel,
+    }))
+
+    const maxPuntaje = Math.max(...(data.length ? data.map((d) => d.puntaje) : [0]), 126)
+    const yMax = Math.ceil(maxPuntaje * 1.1 / 10) * 10
+
+    return (
+        <Card className="bg-white border border-gray-200 shadow-sm">
+            <CardHeader className="pb-2">
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <CardTitle className="text-lg font-bold text-gray-800">
+                            Comparativa de Autoevaluaciones
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                            Evolución del puntaje de sustentabilidad a lo largo del tiempo
+                        </p>
+                    </div>
+
+                    {/* Botón desplegable agrupación */}
+                    <div className="relative flex-shrink-0">
+                        <button
+                            onClick={() => setMenuOpen((v) => !v)}
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium border border-gray-200 rounded-lg bg-white hover:bg-gray-50 shadow-sm transition-colors"
+                        >
+                            <span>{agrupacion === "mes" ? "Por mes" : "Por año"}</span>
+                            <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${menuOpen ? "rotate-180" : ""}`} />
+                        </button>
+                        {menuOpen && (
+                            <div className="absolute right-0 mt-1 w-36 bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden">
+                                {(["mes", "año"] as AgrupacionTipo[]).map((op) => (
+                                    <button
+                                        key={op}
+                                        onClick={() => { setAgrupacion(op); setMenuOpen(false) }}
+                                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors ${agrupacion === op ? "font-semibold text-[#880D1E] bg-[#880D1E]/5" : "text-gray-700"}`}
+                                    >
+                                        {op === "mes" ? "Por mes" : "Por año"}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Leyenda de líneas de referencia */}
+                <div className="flex flex-wrap gap-3 mt-3">
+                    {REFERENCE_LINES.map((ref) => (
+                        <div key={ref.value} className="flex items-center gap-1.5">
+                            <div
+                                className="w-6 h-0 border-t-2 border-dashed flex-shrink-0"
+                                style={{ borderColor: ref.color }}
+                            />
+                            <span className="text-xs text-gray-500">
+                                {ref.label}: {ref.value} pts
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            </CardHeader>
+
+            <CardContent className="pt-2 pb-6">
+                {data.length < 2 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
+                        <div className="w-14 h-14 rounded-full bg-[#880D1E]/10 flex items-center justify-center">
+                            <TrendingUp className="h-7 w-7 text-[#880D1E]/50" />
+                        </div>
+                        <p className="text-sm text-muted-foreground max-w-xs">
+                            {data.length === 0
+                                ? "Sin datos para mostrar."
+                                : "Completá al menos 2 autoevaluaciones para ver la evolución comparativa."}
+                        </p>
+                    </div>
+                ) : (
+                    <ResponsiveContainer width="100%" height={300}>
+                        <LineChart
+                            data={data}
+                            margin={{ top: 16, right: 40, left: 0, bottom: 8 }}
+                        >
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                            <XAxis
+                                dataKey="fecha"
+                                tick={{ fontSize: 11, fill: "#6b7280" }}
+                                axisLine={false}
+                                tickLine={false}
+                                label={{
+                                    value: agrupacion === "mes" ? "Mes de Autoevaluación" : "Año de Autoevaluación",
+                                    position: "insideBottom",
+                                    offset: -2,
+                                    fontSize: 12,
+                                    fill: "#9ca3af",
+                                }}
+                                height={48}
+                            />
+                            <YAxis
+                                tick={{ fontSize: 11, fill: "#9ca3af" }}
+                                axisLine={false}
+                                tickLine={false}
+                                domain={[0, yMax]}
+                                label={{
+                                    value: "Puntaje deSustentabilidad",
+                                    angle: -90,
+                                    position: "insideBottomLeft",
+                                    offset: 16,
+                                    fontSize: 12,
+                                    fill: "#9ca3af",
+                                }}
+                                width={60}
+                            />
+                            <RechartsTooltip
+                                content={<ComparativaTooltip />}
+                                cursor={{ stroke: "#880D1E20", strokeWidth: 2 }}
+                            />
+
+                            {/* Líneas de referencia por cada segmento */}
+                            {REFERENCE_LINES.map((ref) => (
+                                <ReferenceLine
+                                    key={ref.value}
+                                    y={ref.value}
+                                    stroke={ref.color}
+                                    strokeDasharray="6 4"
+                                    strokeWidth={1.5}
+                                    label={{
+                                        position: "insideTopRight",
+                                        fontSize: 10,
+                                        fill: ref.color,
+                                        fontWeight: 600,
+                                    }}
+                                />
+                            ))}
+
+                            {/* Línea principal de puntajes */}
+                            <Line
+                                type="monotone"
+                                dataKey="puntaje"
+                                stroke="#880D1E"
+                                strokeWidth={2.5}
+                                dot={(props: any) => {
+                                    const { cx, cy, index } = props
+                                    return (
+                                        <circle
+                                            key={`dot-${index}`}
+                                            cx={cx}
+                                            cy={cy}
+                                            r={5}
+                                            fill="#880D1E"
+                                            stroke="#fff"
+                                            strokeWidth={2}
+                                            style={{ cursor: "pointer" }}
+                                        />
+                                    )
+                                }}
+                                activeDot={{
+                                    r: 7,
+                                    fill: "#880D1E",
+                                    stroke: "#fff",
+                                    strokeWidth: 2.5,
+                                }}
+                                animationDuration={900}
+                                animationEasing="ease-out"
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
+                )}
+            </CardContent>
+        </Card>
+    )
 }
 
 // Tipo para capítulo local guardado con indicadores (extendido)
@@ -498,6 +762,7 @@ function ErrorState({ message }: { message: string }) {
 
 interface ResultadoLocal {
     assessmentId: string
+    id_bodega?: number
     puntaje_final: number
     puntaje_maximo: number
     porcentaje: number
@@ -512,26 +777,16 @@ interface ResultadoLocal {
 export default function ResultadosPage() {
     const router = useRouter()
     const [resultadoLocal, setResultadoLocal] = useState<ResultadoLocal | null>(null)
+    const [historialComparativa, setHistorialComparativa] = useState<
+        Array<{ fecha: string; puntaje: number; nivel: string }>
+    >([])
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
         const cargarResultados = async () => {
             try {
-                // Primero intentar cargar desde localStorage para carga rápida
-                const ultimoResultado = localStorage.getItem('ultimo_resultado_completado')
-                if (ultimoResultado) {
-                    try {
-                        const parsed = JSON.parse(ultimoResultado) as ResultadoLocal
-                        setResultadoLocal(parsed)
-                        setIsLoading(false)
-                        return
-                    } catch (e) {
-                        console.error('Error al parsear resultado local:', e)
-                    }
-                }
-
-                // Si no hay en localStorage, consultar la API
+                // Obtener información del usuario actual primero
                 const usuarioStr = localStorage.getItem('usuario')
                 if (!usuarioStr) {
                     setIsLoading(false)
@@ -545,6 +800,30 @@ export default function ResultadosPage() {
                     setIsLoading(false)
                     return
                 }
+
+                // Intentar cargar desde localStorage solo si pertenece al usuario actual
+                const ultimoResultado = localStorage.getItem('ultimo_resultado_completado')
+                if (ultimoResultado) {
+                    try {
+                        const parsed = JSON.parse(ultimoResultado) as ResultadoLocal & { id_bodega?: number }
+                        // Verificar que el resultado pertenece a la bodega del usuario actual
+                        if (parsed.id_bodega && parsed.id_bodega === idBodega) {
+                            setResultadoLocal(parsed)
+                            // Cargar historial de todas formas para el gráfico
+                            await cargarHistorialComparativa()
+                            setIsLoading(false)
+                            return
+                        } else {
+                            // Resultado de otra bodega/usuario, limpiar y consultar API
+                            localStorage.removeItem('ultimo_resultado_completado')
+                        }
+                    } catch (e) {
+                        console.error('Error al parsear resultado local:', e)
+                        localStorage.removeItem('ultimo_resultado_completado')
+                    }
+                }
+
+                // Consultar la API
 
                 // Obtener historial de evaluaciones completadas
                 const historial = await obtenerHistorialAutoevaluaciones(idBodega)
@@ -572,6 +851,7 @@ export default function ResultadosPage() {
                 // Formatear respuesta de API a formato ResultadoLocal
                 const resultadoFormateado: ResultadoLocal = {
                     assessmentId: ultimaEvaluacion.id_autoevaluacion.toString(),
+                    id_bodega: idBodega,
                     puntaje_final: ultimaEvaluacion.puntaje_final || 0,
                     puntaje_maximo: ultimaEvaluacion.puntaje_maximo || 0,
                     porcentaje: ultimaEvaluacion.porcentaje || 0,
@@ -625,11 +905,60 @@ export default function ResultadosPage() {
                 }
 
                 setResultadoLocal(resultadoFormateado)
+
+                // Construir historial comparativo desde el historial completo
+                const puntos = historial
+                    .filter((ev: any) => ev.puntaje_final != null)
+                    .sort((a: any, b: any) =>
+                        new Date(a.fecha_finalizacion || a.fecha_inicio).getTime() -
+                        new Date(b.fecha_finalizacion || b.fecha_inicio).getTime()
+                    )
+                    .map((ev: any) => ({
+                        fecha: ev.fecha_finalizacion || ev.fecha_inicio,
+                        puntaje: ev.puntaje_final || 0,
+                        nivel: ev.nivel_sostenibilidad?.nombre || 'N/A',
+                    }))
+
+                setHistorialComparativa(puntos)
+
             } catch (err) {
                 console.error('Error al cargar resultados:', err)
                 setError(err instanceof Error ? err.message : 'Error desconocido al cargar resultados')
             } finally {
                 setIsLoading(false)
+            }
+        }
+
+        /**
+         * Si ya teníamos el resultado en localStorage, igual intentamos
+         * cargar el historial completo para el gráfico comparativo.
+         */
+        const cargarHistorialComparativa = async () => {
+            try {
+                const usuarioStr = localStorage.getItem('usuario')
+                if (!usuarioStr) return
+                const usuario = JSON.parse(usuarioStr)
+                const idBodega = usuario.bodega?.id_bodega || usuario.id_bodega
+                if (!idBodega) return
+
+                const historial = await obtenerHistorialAutoevaluaciones(idBodega)
+                if (!historial || historial.length === 0) return
+
+                const puntos = historial
+                    .filter((ev: any) => ev.puntaje_final != null)
+                    .sort((a: any, b: any) =>
+                        new Date(a.fecha_finalizacion || a.fecha_inicio).getTime() -
+                        new Date(b.fecha_finalizacion || b.fecha_inicio).getTime()
+                    )
+                    .map((ev: any) => ({
+                        fecha: ev.fecha_finalizacion || ev.fecha_inicio,
+                        puntaje: ev.puntaje_final || 0,
+                        nivel: ev.nivel_sostenibilidad?.nombre || 'N/A',
+                    }))
+
+                setHistorialComparativa(puntos)
+            } catch (e) {
+                console.error('Error al cargar historial comparativo:', e)
             }
         }
 
@@ -845,6 +1174,12 @@ export default function ResultadosPage() {
                         ))}
                 </div>
             </div>
+
+            {/* ── Gráfico Comparativa de Autoevaluaciones ── */}
+            <ComparativaChart
+                historial={historialComparativa}
+                segmento={resultadoLocal.segmento}
+            />
 
             {/* Tabla de Niveles de Sostenibilidad */}
             <NivelesSostenibilidadTable

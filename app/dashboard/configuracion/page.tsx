@@ -504,7 +504,7 @@ export default function ConfiguracionPage() {
                     id="admin_first_name"
                     value={formData.admin_first_name}
                     onChange={(e) => handleInputChange("admin_first_name", e.target.value)}
-                    className="mt-2"
+                    className="mt-2 border-blue-300 bg-blue-50 focus:border-blue-500 focus:ring-blue-500"
                   />
                 ) : (
                   <p className="font-medium mt-2">{formData.admin_first_name || "-"}</p>
@@ -518,7 +518,7 @@ export default function ConfiguracionPage() {
                     id="admin_last_name"
                     value={formData.admin_last_name}
                     onChange={(e) => handleInputChange("admin_last_name", e.target.value)}
-                    className="mt-2"
+                    className="mt-2 border-blue-300 bg-blue-50 focus:border-blue-500 focus:ring-blue-500"
                   />
                 ) : (
                   <p className="font-medium mt-2">{formData.admin_last_name || "-"}</p>
@@ -532,7 +532,7 @@ export default function ConfiguracionPage() {
                     id="admin_dni"
                     value={formData.admin_dni}
                     onChange={(e) => handleInputChange("admin_dni", e.target.value)}
-                    className="mt-2"
+                    className="mt-2 border-blue-300 bg-blue-50 focus:border-blue-500 focus:ring-blue-500"
                     maxLength={8}
                   />
                 ) : (
@@ -547,7 +547,7 @@ export default function ConfiguracionPage() {
                     id="admin_role"
                     value={formData.admin_role}
                     onChange={(e) => handleInputChange("admin_role", e.target.value)}
-                    className="mt-2"
+                    className="mt-2 border-blue-300 bg-blue-50 focus:border-blue-500 focus:ring-blue-500"
                   />
                 ) : (
                   <p className="font-medium mt-2">{formData.admin_role || "-"}</p>
@@ -577,7 +577,7 @@ export default function ConfiguracionPage() {
                 id="nombre_fantasia"
                 value={formData.nombre_fantasia}
                 onChange={(e) => handleInputChange("nombre_fantasia", e.target.value)}
-                className="mt-2"
+                className="mt-2 border-blue-300 bg-blue-50 focus:border-blue-500 focus:ring-blue-500"
               />
             ) : (
               <p className="font-medium mt-2">{formData.nombre_fantasia || "-"}</p>
@@ -621,7 +621,7 @@ export default function ConfiguracionPage() {
                 id="telefono"
                 value={formData.telefono}
                 onChange={(e) => handleInputChange("telefono", e.target.value)}
-                className="mt-2"
+                className="mt-2 border-blue-300 bg-blue-50 focus:border-blue-500 focus:ring-blue-500"
               />
             ) : (
               <p className="font-medium mt-2">{formData.telefono || "-"}</p>

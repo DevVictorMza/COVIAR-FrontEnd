@@ -583,6 +583,39 @@ export function exportResultadoDetalladoToPDF(
     doc.setFontSize(10)
     doc.text(nivelLines, 56, nivelY)
 
+    // === ENLACE DESCARGA DE EVIDENCIAS (ZIP) ===
+    const hayEvidencias = capitulos.some(cap =>
+        cap.indicadores?.some(ind => ind.tiene_evidencia)
+    )
+
+    if (hayEvidencias) {
+        let evSectionY = resBoxTop + resBoxHeight + 8
+
+        if (evSectionY > doc.internal.pageSize.height - 25) {
+            doc.addPage()
+            evSectionY = 20
+        }
+
+        const zipUrl = `${baseUrl}/api/autoevaluaciones/${ev.id_autoevaluacion}/evidencias/descargar`
+        const linkText = 'Descargar todas las evidencias (ZIP)'
+
+        doc.setFontSize(8.5)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(60)
+        doc.text('Evidencias adjuntas:', 14, evSectionY)
+
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(0, 51, 153)
+        doc.text(linkText, 14, evSectionY + 6)
+
+        const textWidth = doc.getTextWidth(linkText)
+        doc.setDrawColor(0, 51, 153)
+        doc.setLineWidth(0.2)
+        doc.line(14, evSectionY + 6.5, 14 + textWidth, evSectionY + 6.5)
+
+        doc.link(14, evSectionY + 1.5, textWidth, 5.5, { url: zipUrl })
+    }
+
     addFooter(doc)
     doc.save(`${filename}.pdf`)
 }

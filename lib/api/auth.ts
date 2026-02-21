@@ -109,11 +109,12 @@ export async function logoutUsuario(): Promise<void> {
     localStorage.removeItem('usuario')
     localStorage.removeItem('token')
     localStorage.removeItem('tipoCuenta')
+    localStorage.removeItem('ultimo_resultado_completado')
 
     // Limpiar caches de historial
     const keys = Object.keys(localStorage)
     for (const key of keys) {
-      if (key.startsWith('historial_') || key.startsWith('resultados_')) {
+      if (key.startsWith('historial_') || key.startsWith('resultados_') || key.startsWith('resultado_')) {
         localStorage.removeItem(key)
       }
     }
