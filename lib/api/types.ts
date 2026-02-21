@@ -146,7 +146,7 @@ export interface AutoevaluacionHistorial {
   estado: 'pendiente' | 'completada' | 'cancelada'
   id_bodega: number
   id_segmento: number | null
-  nombre_segmento?: string // Agregado para persistencia local del nombre
+  nombre_segmento?: string
   puntaje_final: number | null
   puntaje_maximo: number | null
   porcentaje: number | null
@@ -156,6 +156,8 @@ export interface AutoevaluacionHistorial {
     nombre: string
     descripcion?: string
   }
+  indicadores_respondidos: number
+  indicadores_total: number
 }
 
 export interface ResultadoIndicadorDetalle {
@@ -167,6 +169,8 @@ export interface ResultadoIndicadorDetalle {
   respuesta_descripcion: string
   respuesta_puntos: number
   puntaje_maximo: number
+  id_respuesta?: number | null
+  tiene_evidencia?: boolean
 }
 
 export interface ResultadoCapitulo {
@@ -204,9 +208,17 @@ export interface ResultadoCapituloConIndicadores extends ResultadoCapitulo {
   indicadores: IndicadorConRespuesta[]
 }
 
+export interface ResponsableInfoAPI {
+  nombre: string
+  apellido: string
+  cargo: string
+  dni: string
+}
+
 export interface ResultadoDetallado {
   autoevaluacion: AutoevaluacionHistorial
   capitulos: ResultadoCapitulo[]
+  responsable?: ResponsableInfoAPI
   comparativa?: {
     evaluacion_anterior?: AutoevaluacionHistorial
     diferencia_puntaje: number
@@ -325,12 +337,15 @@ export interface ResultadosAutoevaluacionError {
 
 export interface Evidencia {
   id_evidencia: number
-  id_autoevaluacion: number
-  id_indicador: number
-  nombre_archivo: string
-  tipo_archivo: string
-  tamano: number
-  fecha_subida: string
+  id_autoevaluacion?: number
+  id_indicador?: number
+  id_respuesta?: number
+  nombre_archivo?: string  // Algunos backends usan este campo
+  nombre?: string          // Otros backends usan este campo
+  tipo_archivo?: string
+  tamano?: number
+  fecha_subida?: string
+  ubicacion?: string
   url?: string
 }
 

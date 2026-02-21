@@ -50,7 +50,7 @@ export function ProgressBarChart({ data, className }: ProgressBarChartProps) {
                                         <p className="font-medium text-sm">{data.fullName}</p>
                                         <p className="text-muted-foreground text-sm">Puntaje: {data.puntaje}</p>
                                         <p className="font-bold" style={{ color: getBarColor(data.porcentaje) }}>
-                                            {data.porcentaje}%
+                                            {Math.round(data.porcentaje)}%
                                         </p>
                                     </div>
                                 )

@@ -74,7 +74,7 @@ export function exportHistorialToCSV(
         ev.nombre_segmento ?? '-',
         ev.puntaje_final?.toString() ?? '-',
         ev.puntaje_maximo?.toString() ?? '-',
-        ev.porcentaje !== null ? `${ev.porcentaje}%` : '-',
+        ev.porcentaje !== null ? `${Math.round(ev.porcentaje)}%` : '-',
         ev.nivel_sostenibilidad?.nombre ?? '-'
     ])
 
@@ -93,7 +93,12 @@ export function exportResultadoDetalladoToCSV(
     resultado: ResultadoDetallado,
     filename: string = 'evaluacion_detallada'
 ): void {
-    const { autoevaluacion: ev, capitulos } = resultado
+    const { autoevaluacion: ev, capitulos, responsable: respAPI } = resultado
+    const datosLocal = obtenerDatosUsuario()
+    const resp = respAPI ?? datosLocal.responsable
+    const nombreCompleto = respAPI
+        ? `${respAPI.nombre} ${respAPI.apellido}`.trim()
+        : `${datosLocal.responsable.nombre} ${datosLocal.responsable.apellido}`.trim()
 
     const rows: string[][] = [
         ['Informacion de la Evaluacion'],
@@ -101,15 +106,23 @@ export function exportResultadoDetalladoToCSV(
         ['Fecha', formatDate(ev.fecha_finalizacion || ev.fecha_inicio)],
         ['Segmento', ev.nombre_segmento ?? '-'],
         ['Puntaje Total', `${ev.puntaje_final ?? '-'} / ${ev.puntaje_maximo ?? '-'}`],
-        ['Porcentaje', ev.porcentaje !== null ? `${ev.porcentaje}%` : '-'],
+        ['Porcentaje', ev.porcentaje !== null ? `${Math.round(ev.porcentaje)}%` : '-'],
         ['Nivel', ev.nivel_sostenibilidad?.nombre ?? '-'],
         [''],
-        ['Capitulo', 'Indicador', 'Descripcion', 'Respuesta', 'Puntos', 'Max'],
+        ['Responsable', nombreCompleto || '-'],
+        ['Cargo', resp.cargo || '-'],
+        ['DNI', resp.dni || '-'],
+        [''],
+        ['Capitulo', 'Indicador', 'Descripcion', 'Respuesta', 'Puntos', 'Max', 'Evidencia'],
     ]
 
+    const baseUrl = 'http://localhost:3000'
     for (const cap of capitulos) {
         if (cap.indicadores) {
             for (const ind of cap.indicadores) {
+                const evidenciaVal = ind.tiene_evidencia && ind.id_respuesta
+                    ? `${baseUrl}/api/autoevaluaciones/${ev.id_autoevaluacion}/respuestas/${ind.id_respuesta}/evidencia/descargar`
+                    : '-'
                 rows.push([
                     cap.nombre,
                     ind.nombre,
@@ -117,6 +130,7 @@ export function exportResultadoDetalladoToCSV(
                     ind.respuesta_nombre,
                     ind.respuesta_puntos.toString(),
                     ind.puntaje_maximo.toString(),
+                    evidenciaVal,
                 ])
             }
         }
@@ -246,7 +260,7 @@ export function exportHistorialToPDF(
         formatDateShort(ev.fecha_finalizacion || ev.fecha_inicio),
         ev.nombre_segmento ?? '-',
         `${ev.puntaje_final ?? '-'} / ${ev.puntaje_maximo ?? '-'}`,
-        ev.porcentaje !== null ? `${ev.porcentaje}%` : '-',
+        ev.porcentaje !== null ? `${Math.round(ev.porcentaje)}%` : '-',
         ev.nivel_sostenibilidad?.nombre ?? '-'
     ])
 
@@ -278,6 +292,16 @@ export function exportHistorialToPDF(
 }
 
 /**
+ * Datos opcionales para override (admin puede pasar datos de otra bodega)
+ */
+export interface DatosInformeOverride {
+    bodegaNombre: string
+    responsableNombre?: string
+    responsableCargo?: string
+    responsableDni?: string
+}
+
+/**
  * Exporta una evaluacion detallada a PDF - Estilo formal/institucional
  * Incluye: bodega, responsable, todos los indicadores con su respuesta,
  * y al final el puntaje total y nivel de sostenibilidad.
@@ -285,11 +309,34 @@ export function exportHistorialToPDF(
 export function exportResultadoDetalladoToPDF(
     resultado: ResultadoDetallado,
     _bodegaNombre: string = 'Bodega',
-    filename: string = 'evaluacion_detallada'
+    filename: string = 'evaluacion_detallada',
+    datosOverride?: DatosInformeOverride
 ): void {
     const doc = new jsPDF()
-    const { autoevaluacion: ev, capitulos } = resultado
-    const datos = obtenerDatosUsuario()
+    const { autoevaluacion: ev, capitulos, responsable: respAPI } = resultado
+    const datosLocal = obtenerDatosUsuario()
+    // Prioridad: datosOverride > API responsable > localStorage
+    const datos: DatosUsuario = datosOverride
+        ? {
+            bodega: { nombre_fantasia: datosOverride.bodegaNombre, razon_social: '' },
+            responsable: {
+                nombre: datosOverride.responsableNombre || (respAPI ? `${respAPI.nombre} ${respAPI.apellido}`.trim() : ''),
+                apellido: '',
+                cargo: datosOverride.responsableCargo || respAPI?.cargo || '',
+                dni: datosOverride.responsableDni || respAPI?.dni || '',
+            },
+        }
+        : respAPI
+            ? {
+                bodega: datosLocal.bodega,
+                responsable: {
+                    nombre: respAPI.nombre,
+                    apellido: respAPI.apellido,
+                    cargo: respAPI.cargo,
+                    dni: respAPI.dni,
+                },
+            }
+            : datosLocal
     const pageWidth = doc.internal.pageSize.width
 
     // === ENCABEZADO ===
@@ -376,6 +423,10 @@ export function exportResultadoDetalladoToPDF(
     // Construir filas con rowSpan para agrupar por capitulo
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const tableBody: any[][] = []
+    // Mapa de fila -> URL de descarga de evidencia
+    const evidenceLinks = new Map<number, string>()
+    let tableRowIdx = 0
+    const baseUrl = 'http://localhost:3000'
 
     for (const cap of capitulos) {
         const indicadores = cap.indicadores ?? []
@@ -389,8 +440,10 @@ export function exportResultadoDetalladoToPDF(
                 '-',
                 '-',
                 '-',
+                '-',
                 { content: puntajeCapStr, rowSpan: 1, styles: { halign: 'center', fontStyle: 'bold', valign: 'middle' } },
             ])
+            tableRowIdx++
         } else {
             indicadores.forEach((ind, idx) => {
                 const row: any[] = [] // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -401,17 +454,26 @@ export function exportResultadoDetalladoToPDF(
                 row.push(ind.descripcion || '-')
                 row.push(ind.respuesta_nombre || '-')
                 row.push({ content: ind.respuesta_puntos.toString(), styles: { halign: 'center' } })
+
+                if (ind.tiene_evidencia && ind.id_respuesta) {
+                    row.push({ content: 'Descargar', styles: { halign: 'center', textColor: [0, 51, 153] } })
+                    evidenceLinks.set(tableRowIdx, `${baseUrl}/api/autoevaluaciones/${ev.id_autoevaluacion}/respuestas/${ind.id_respuesta}/evidencia/descargar`)
+                } else {
+                    row.push({ content: '-', styles: { halign: 'center' } })
+                }
+
                 if (idx === 0) {
                     row.push({ content: puntajeCapStr, rowSpan: rowCount, styles: { halign: 'center', fontStyle: 'bold', valign: 'middle' } })
                 }
                 tableBody.push(row)
+                tableRowIdx++
             })
         }
     }
 
     autoTable(doc, {
         startY: y,
-        head: [['Capitulo', 'Indicador', 'Descripcion', 'Nivel de Indicador', 'Pts', 'Puntaje Capitulo']],
+        head: [['Capitulo', 'Indicador', 'Descripcion', 'Nivel de Indicador', 'Pts', 'Evidencia', 'Puntaje Capitulo']],
         body: tableBody,
         theme: 'grid',
         headStyles: {
@@ -433,14 +495,22 @@ export function exportResultadoDetalladoToPDF(
             fillColor: [248, 248, 248],
         },
         columnStyles: {
-            0: { cellWidth: 30 },
-            1: { cellWidth: 22 },
-            2: { cellWidth: 52 },
-            3: { cellWidth: 35 },
-            4: { cellWidth: 14, halign: 'center' },
-            5: { cellWidth: 28, halign: 'center' },
+            0: { cellWidth: 28 },
+            1: { cellWidth: 20 },
+            2: { cellWidth: 44 },
+            3: { cellWidth: 32 },
+            4: { cellWidth: 12, halign: 'center' },
+            5: { cellWidth: 18, halign: 'center' },
+            6: { cellWidth: 26, halign: 'center' },
         },
         margin: { left: 14, right: 14 },
+        didDrawCell: (data) => {
+            // Agregar link clickeable en celdas de evidencia
+            if (data.section === 'body' && data.column.index === 5 && evidenceLinks.has(data.row.index)) {
+                const url = evidenceLinks.get(data.row.index)!
+                doc.link(data.cell.x, data.cell.y, data.cell.width, data.cell.height, { url })
+            }
+        },
     })
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -501,7 +571,7 @@ export function exportResultadoDetalladoToPDF(
     doc.text('Porcentaje:', 90, resY)
     doc.setTextColor(20)
     doc.setFontSize(10)
-    doc.text(ev.porcentaje !== null ? `${ev.porcentaje}%` : '-', 115, resY)
+    doc.text(ev.porcentaje !== null ? `${Math.round(ev.porcentaje)}%` : '-', 115, resY)
 
     // Nivel en su propia linea para que no se desborde
     const nivelY = resY + 8
@@ -512,6 +582,39 @@ export function exportResultadoDetalladoToPDF(
     doc.setTextColor(20)
     doc.setFontSize(10)
     doc.text(nivelLines, 56, nivelY)
+
+    // === ENLACE DESCARGA DE EVIDENCIAS (ZIP) ===
+    const hayEvidencias = capitulos.some(cap =>
+        cap.indicadores?.some(ind => ind.tiene_evidencia)
+    )
+
+    if (hayEvidencias) {
+        let evSectionY = resBoxTop + resBoxHeight + 8
+
+        if (evSectionY > doc.internal.pageSize.height - 25) {
+            doc.addPage()
+            evSectionY = 20
+        }
+
+        const zipUrl = `${baseUrl}/api/autoevaluaciones/${ev.id_autoevaluacion}/evidencias/descargar`
+        const linkText = 'Descargar todas las evidencias (ZIP)'
+
+        doc.setFontSize(8.5)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(60)
+        doc.text('Evidencias adjuntas:', 14, evSectionY)
+
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(0, 51, 153)
+        doc.text(linkText, 14, evSectionY + 6)
+
+        const textWidth = doc.getTextWidth(linkText)
+        doc.setDrawColor(0, 51, 153)
+        doc.setLineWidth(0.2)
+        doc.line(14, evSectionY + 6.5, 14 + textWidth, evSectionY + 6.5)
+
+        doc.link(14, evSectionY + 1.5, textWidth, 5.5, { url: zipUrl })
+    }
 
     addFooter(doc)
     doc.save(`${filename}.pdf`)

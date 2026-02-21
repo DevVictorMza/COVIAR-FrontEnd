@@ -3,10 +3,26 @@
 import { useState, useRef, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Upload, FileText, X, CheckCircle2, AlertCircle, Loader2, Trash2, AlertTriangle } from "lucide-react"
-import { subirEvidencia, eliminarEvidencia, guardarRespuestaIndividual, MAX_EVIDENCE_FILE_SIZE } from "@/lib/api/autoevaluacion"
+import { Upload, FileText, X, CheckCircle2, AlertCircle, Loader2, Trash2, AlertTriangle, Download } from "lucide-react"
+import { subirEvidencia, eliminarEvidencia, guardarRespuestaIndividual, descargarEvidencia, MAX_EVIDENCE_FILE_SIZE } from "@/lib/api/autoevaluacion"
 
 type EvidenciaStatus = "idle" | "uploading" | "success" | "error" | "has-file"
+
+// Función para truncar nombres de archivo largos
+function truncateFileName(fileName: string | null, maxLength: number = 35): string {
+    if (!fileName) return '';
+    if (fileName.length <= maxLength) return fileName;
+    
+    const extension = fileName.lastIndexOf('.') > 0 
+        ? fileName.slice(fileName.lastIndexOf('.')) 
+        : '';
+    const nameWithoutExt = fileName.slice(0, fileName.length - extension.length);
+    const charsToShow = maxLength - extension.length - 3; // 3 for "..."
+    const frontChars = Math.ceil(charsToShow / 2);
+    const backChars = Math.floor(charsToShow / 2);
+    
+    return `${nameWithoutExt.slice(0, frontChars)}...${nameWithoutExt.slice(-backChars)}${extension}`;
+}
 
 interface EvidenciaUploadProps {
     idAutoevaluacion: string
@@ -97,15 +113,18 @@ export function EvidenciaUpload({
     // Sincronizar archivo existente con estado local
     useEffect(() => {
         if (archivoExistente) {
+            console.log(`📁 Inicializando archivo existente para indicador ${idIndicador}:`, archivoExistente)
             setNombreArchivo(archivoExistente)
             setStatus("has-file")
-        } else if (archivoExistente === null) {
+            setErrorMessage(null) // Limpiar cualquier error previo
+        } else if (archivoExistente === null && nombreArchivo !== null) {
             // Si archivoExistente cambió a null, resetear el componente
+            console.log(`🗑️ Reseteando evidencia para indicador ${idIndicador}`)
             setNombreArchivo(null)
             setStatus("idle")
             setErrorMessage(null)
         }
-    }, [archivoExistente])
+    }, [archivoExistente, idIndicador, nombreArchivo])
 
     /**
      * Resuelve el id_respuesta re-enviando un POST con la respuesta actual.
@@ -196,11 +215,18 @@ export function EvidenciaUpload({
 
         // Subir archivo
         try {
+            console.log(`📤 Subiendo evidencia para indicador ${idIndicador}, respuesta ${effectiveIdRespuesta}`)
             const response = await subirEvidencia(idAutoevaluacion, effectiveIdRespuesta, pendingFile)
             stopProgressBar(100)
-            setNombreArchivo(response.evidencia?.nombre_archivo || pendingFile.name)
+            
+            // El backend puede devolver 'nombre_archivo' o 'nombre'
+            const nombreArchivoSubido = response.evidencia?.nombre_archivo || response.evidencia?.nombre || pendingFile.name
+            console.log(`✅ Evidencia subida exitosamente:`, nombreArchivoSubido)
+            console.log(`📋 Respuesta del backend:`, response)
+            
+            setNombreArchivo(nombreArchivoSubido)
             setStatus("success")
-            onEvidenciaChange?.(idIndicador, response.evidencia?.nombre_archivo || pendingFile.name)
+            onEvidenciaChange?.(idIndicador, nombreArchivoSubido)
             setPendingFile(null)
 
             // Después de 2.5s, pasar a estado "has-file"
@@ -208,9 +234,21 @@ export function EvidenciaUpload({
                 setStatus("has-file")
             }, 2500)
         } catch (error) {
+            console.error(`❌ Error al subir evidencia para indicador ${idIndicador}:`, error)
             stopProgressBar(0)
             setStatus("error")
-            setErrorMessage(error instanceof Error ? error.message : "Error al subir el archivo")
+            
+            // Extraer mensaje de error más específico
+            let errorMsg = "Error al subir el archivo"
+            if (error instanceof Error) {
+                errorMsg = error.message
+                // Si es error 500, dar más contexto
+                if (errorMsg.includes("500") || errorMsg.includes("interno del servidor")) {
+                    errorMsg = "Error del servidor. Verifica que el archivo sea un PDF válido y no exceda 2 MB. Si el problema persiste, contacta al administrador."
+                }
+            }
+            
+            setErrorMessage(errorMsg)
             setPendingFile(null)
         }
     }, [pendingFile, idAutoevaluacion, idIndicador, onEvidenciaChange, resolveIdRespuesta, startProgressBar, stopProgressBar])
@@ -249,6 +287,18 @@ export function EvidenciaUpload({
     const handleCancelDelete = useCallback(() => {
         setShowDeleteDialog(false)
     }, [])
+
+    const handleDownload = useCallback(async () => {
+        const effectiveId = resolvedIdRespuesta ?? idRespuesta
+        if (!effectiveId) return
+        
+        try {
+            await descargarEvidencia(idAutoevaluacion, effectiveId)
+        } catch (error) {
+            setStatus("error")
+            setErrorMessage(error instanceof Error ? error.message : "Error al descargar la evidencia")
+        }
+    }, [idAutoevaluacion, idRespuesta, resolvedIdRespuesta])
 
     const handleClickUpload = () => {
         fileInputRef.current?.click()
@@ -326,6 +376,16 @@ export function EvidenciaUpload({
                             type="button"
                             variant="ghost"
                             size="sm"
+                            onClick={handleDownload}
+                            className="h-7 px-2 text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
+                            title="Descargar evidencia"
+                        >
+                            <Download className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
                             onClick={handleClickUpload}
                             className="h-7 px-2 text-muted-foreground hover:text-primary"
                             title="Reemplazar archivo"
@@ -356,9 +416,16 @@ export function EvidenciaUpload({
                 <div className="space-y-2">
                     <div className="flex items-start gap-2 px-3 py-2 rounded-md bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800">
                         <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                        <span className="text-sm text-red-700 dark:text-red-300 font-medium">
-                            {errorMessage}
-                        </span>
+                        <div className="flex-1">
+                            <p className="text-sm text-red-700 dark:text-red-300 font-medium">
+                                {errorMessage}
+                            </p>
+                            {errorMessage.includes("500") && (
+                                <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                                    Este es un problema del servidor. Puedes intentar de nuevo o contactar soporte si persiste.
+                                </p>
+                            )}
+                        </div>
                         <button
                             type="button"
                             onClick={resetError}
@@ -457,8 +524,8 @@ export function EvidenciaUpload({
                             <div className="flex items-center gap-2">
                                 <Trash2 className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-red-700 dark:text-red-300 truncate" title={nombreArchivo}>
-                                        {nombreArchivo}
+                                    <p className="text-sm font-medium text-red-700 dark:text-red-300 break-all" title={nombreArchivo}>
+                                        {truncateFileName(nombreArchivo)}
                                     </p>
                                     <p className="text-xs text-red-600 dark:text-red-400">
                                         Esta acción no se puede deshacer

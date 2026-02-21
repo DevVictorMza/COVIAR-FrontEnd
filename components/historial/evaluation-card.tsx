@@ -17,6 +17,7 @@ import {
     Loader2
 } from "lucide-react"
 import type { AutoevaluacionHistorial, ResultadoDetallado } from "@/lib/api/types"
+import { obtenerResultadosAutoevaluacion } from "@/lib/api/autoevaluacion"
 import { determineSustainabilityLevel } from "@/lib/utils/scoring"
 import { ChapterDetails } from "./chapter-details"
 import {
@@ -65,11 +66,13 @@ export function EvaluationCard({
         e.stopPropagation()
         setExportingCSV(true)
         try {
-            // Usar resultado existente o cargarlo bajo demanda
-            const data = resultado ?? await onLoadDetails(evaluacion.id_autoevaluacion)
+            // Siempre obtener datos frescos del backend para exportación
+            const data = await obtenerResultadosAutoevaluacion(evaluacion.id_autoevaluacion)
             if (data) {
                 exportResultadoDetalladoToCSV(data, `evaluacion_${evaluacion.id_autoevaluacion}`)
             }
+        } catch (err) {
+            console.error('Error al exportar CSV:', err)
         } finally {
             setExportingCSV(false)
         }
@@ -79,16 +82,17 @@ export function EvaluationCard({
         e.stopPropagation()
         setExportingPDF(true)
         try {
-            // Obtener nombre de bodega desde localStorage
             const usuarioStr = localStorage.getItem('usuario')
             const usuario = usuarioStr ? JSON.parse(usuarioStr) : {}
             const bodegaNombre = usuario.bodega?.nombre_fantasia || 'Bodega'
 
-            // Usar resultado existente o cargarlo bajo demanda
-            const data = resultado ?? await onLoadDetails(evaluacion.id_autoevaluacion)
+            // Siempre obtener datos frescos del backend para exportación
+            const data = await obtenerResultadosAutoevaluacion(evaluacion.id_autoevaluacion)
             if (data) {
                 exportResultadoDetalladoToPDF(data, bodegaNombre, `evaluacion_${evaluacion.id_autoevaluacion}`)
             }
+        } catch (err) {
+            console.error('Error al exportar PDF:', err)
         } finally {
             setExportingPDF(false)
         }
@@ -104,13 +108,9 @@ export function EvaluationCard({
         })
     }
 
-    // Calcular indicadores respondidos basado en capítulos
-    const indicadoresRespondidos = resultado?.capitulos.reduce(
-        (acc, cap) => acc + cap.indicadores_completados, 0
-    ) ?? null
-    const indicadoresTotal = resultado?.capitulos.reduce(
-        (acc, cap) => acc + cap.indicadores_total, 0
-    ) ?? null
+    // Indicadores respondidos directamente desde la API
+    const indicadoresRespondidos = evaluacion.indicadores_respondidos ?? null
+    const indicadoresTotal = evaluacion.indicadores_total ?? null
 
     return (
         <Card className="border-border/50 hover:bg-[#81242d]/5 hover:border-[#81242d]/50 transition-all duration-300 hover:shadow-lg" style={{
@@ -190,7 +190,7 @@ export function EvaluationCard({
                                         className="text-2xl font-bold"
                                         style={{ color: nivel?.color || '#81242d' }}
                                     >
-                                        {evaluacion.porcentaje ?? '-'}%
+                                        {evaluacion.porcentaje !== null ? Math.round(evaluacion.porcentaje) : '-'}%
                                     </span>
                                     {evaluacion.porcentaje !== null && evaluacion.porcentaje >= 50 && (
                                         <div className="bg-green-500/10 p-1 rounded">

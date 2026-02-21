@@ -10,8 +10,9 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { getEvaluaciones, type EvaluacionListItem } from "@/lib/api/admin"
-import { AlertCircle, Search, FileText, Filter, Eye, Download, ChevronLeft, ChevronRight } from "lucide-react"
-import Link from "next/link"
+import { obtenerResultadosAutoevaluacion } from "@/lib/api/autoevaluacion"
+import { exportResultadoDetalladoToPDF } from "@/lib/utils/export-utils"
+import { AlertCircle, Search, FileText, Filter, Download, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 
 export default function GestionAutoevaluacionPage() {
   const [evaluaciones, setEvaluaciones] = useState<EvaluacionListItem[]>([])
@@ -26,6 +27,9 @@ export default function GestionAutoevaluacionPage() {
   // Paginación
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(25)
+
+  // PDF download
+  const [downloadingId, setDownloadingId] = useState<number | null>(null)
 
   useEffect(() => {
     fetchEvaluaciones()
@@ -81,16 +85,36 @@ export default function GestionAutoevaluacionPage() {
     })
   }
 
+  const handleDescargarPDF = async (evaluacion: EvaluacionListItem) => {
+    try {
+      setDownloadingId(evaluacion.id_autoevaluacion)
+      const resultado = await obtenerResultadosAutoevaluacion(evaluacion.id_autoevaluacion)
+      exportResultadoDetalladoToPDF(
+        resultado,
+        evaluacion.nombre_bodega,
+        `evaluacion_${evaluacion.id_autoevaluacion}`,
+        {
+          bodegaNombre: evaluacion.nombre_bodega,
+          responsableNombre: evaluacion.responsable !== 'N/A' ? evaluacion.responsable : '-',
+        }
+      )
+    } catch (err) {
+      console.error('Error al descargar PDF:', err)
+      setError(err instanceof Error ? err.message : 'Error al descargar PDF')
+    } finally {
+      setDownloadingId(null)
+    }
+  }
+
   const exportToCSV = () => {
     if (filteredEvaluaciones.length === 0) return
 
-    const headers = ["ID", "Bodega", "Razón Social", "Estado", "Porcentaje", "Fecha Inicio", "Fecha Fin", "Responsable"]
+    const headers = ["ID", "Bodega", "Razón Social", "Estado", "Fecha Inicio", "Fecha Fin", "Responsable"]
     const rows = filteredEvaluaciones.map(evaluacion => [
       evaluacion.id_autoevaluacion,
       evaluacion.nombre_bodega,
       evaluacion.razon_social,
       evaluacion.estado,
-      evaluacion.porcentaje ? `${evaluacion.porcentaje}%` : "N/A",
       formatDate(evaluacion.fecha_inicio),
       formatDate(evaluacion.fecha_fin),
       evaluacion.responsable
@@ -235,7 +259,6 @@ export default function GestionAutoevaluacionPage() {
                       <TableHead>Bodega</TableHead>
                       <TableHead>Razón Social</TableHead>
                       <TableHead>Estado</TableHead>
-                      <TableHead>Porcentaje</TableHead>
                       <TableHead>Fecha Inicio</TableHead>
                       <TableHead>Fecha Fin</TableHead>
                       <TableHead>Responsable</TableHead>
@@ -249,24 +272,24 @@ export default function GestionAutoevaluacionPage() {
                         <TableCell>{evaluacion.nombre_bodega}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{evaluacion.razon_social}</TableCell>
                         <TableCell>{getEstadoBadge(evaluacion.estado)}</TableCell>
-                        <TableCell>
-                          {evaluacion.porcentaje !== null ? (
-                            <span className="font-semibold text-[#81242d]">{evaluacion.porcentaje.toFixed(1)}%</span>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
                         <TableCell className="text-sm">{formatDate(evaluacion.fecha_inicio)}</TableCell>
                         <TableCell className="text-sm">{formatDate(evaluacion.fecha_fin)}</TableCell>
                         <TableCell className="text-sm">{evaluacion.responsable}</TableCell>
                         <TableCell className="text-right">
                           {evaluacion.estado === 'COMPLETADA' && (
-                            <Link href={`/dashboard/resultados/${evaluacion.id_autoevaluacion}`}>
-                              <Button variant="ghost" size="sm">
-                                <Eye className="h-4 w-4 mr-2" />
-                                Ver Resultados
-                              </Button>
-                            </Link>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDescargarPDF(evaluacion)}
+                              disabled={downloadingId === evaluacion.id_autoevaluacion}
+                            >
+                              {downloadingId === evaluacion.id_autoevaluacion ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <Download className="h-4 w-4 mr-2" />
+                              )}
+                              {downloadingId === evaluacion.id_autoevaluacion ? 'Generando...' : 'Descargar PDF'}
+                            </Button>
                           )}
                         </TableCell>
                       </TableRow>

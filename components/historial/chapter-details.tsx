@@ -102,7 +102,7 @@ export function ChapterDetails({ capitulos }: ChapterDetailsProps) {
                                 <div className="mb-3">
                                     <div className="flex justify-between text-sm mb-1">
                                         <span className="text-muted-foreground">Progreso</span>
-                                        <span className="font-medium">{capitulo.porcentaje}%</span>
+                                        <span className="font-medium">{Math.round(capitulo.porcentaje)}%</span>
                                     </div>
                                     <div className="h-2 bg-muted rounded-full overflow-hidden">
                                         <div
