@@ -228,6 +228,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+      <div className="mt-4"><h1 className="text-3xl font-bold">Niveles de sostenibilidad por segmentación</h1></div>
 
       {/* ── Fila inferior: 5 gráficos de barras por tipo de bodega ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -239,7 +240,6 @@ export default function AdminDashboard() {
             { nivel: "Medio", name: "Nivel medio de sostenibilidad",   value: niveles.medio,  fill: COLORS.medio  },
             { nivel: "Bajo",  name: "Nivel mínimo de sostenibilidad",  value: niveles.minimo, fill: COLORS.minimo },
           ]
-
           return (
             <Card key={key} className="bg-white border border-gray-200 shadow-sm flex flex-col">
               <CardHeader className="pb-1 px-4 pt-4">

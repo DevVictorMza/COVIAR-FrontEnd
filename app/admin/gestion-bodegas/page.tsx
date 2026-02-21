@@ -25,9 +25,9 @@ interface Bodega {
   cuit: string
   inv_bod: string | null
   inv_vin: string | null
+  telefono: string
   calle: string
   numeracion: string
-  telefono: string
   email_institucional: string
   fecha_registro: string
 }
@@ -51,6 +51,10 @@ export default function GestionBodegasPage() {
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [cambiandoPassword, setCambiandoPassword] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  // Dialog de más información
+  const [dialogInfoOpen, setDialogInfoOpen] = useState(false)
+  const [bodegaInfo, setBodegaInfo] = useState<Bodega | null>(null)
 
   useEffect(() => {
     fetchBodegas()
@@ -121,8 +125,8 @@ export default function GestionBodegasPage() {
   const handleCambiarPassword = async () => {
     setPasswordError(null)
 
-    if (nuevaPassword.length < 6) {
-      setPasswordError("La contraseña debe tener al menos 6 caracteres")
+    if (nuevaPassword.length < 8) {
+      setPasswordError("La contraseña debe tener al menos 8 caracteres")
       return
     }
     if (nuevaPassword !== confirmarPassword) {
@@ -157,6 +161,12 @@ export default function GestionBodegasPage() {
     } finally {
       setCambiandoPassword(false)
     }
+  }
+
+  //handle para abrir dialog de más información
+  const handleAbrirInfo = (bodega: Bodega) => {
+  setBodegaInfo(bodega)
+  setDialogInfoOpen(true)
   }
 
   const totalPages = Math.ceil(filteredBodegas.length / itemsPerPage)
@@ -262,44 +272,47 @@ export default function GestionBodegasPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Razón Social</TableHead>
-                      <TableHead>Nombre Fantasía</TableHead>
-                      <TableHead>CUIT</TableHead>
-                      <TableHead>INV Bodega</TableHead>
-                      <TableHead>INV Viñedo</TableHead>
-                      <TableHead>Dirección</TableHead>
-                      <TableHead>Teléfono</TableHead>
-                      <TableHead>Email Institucional</TableHead>
-                      <TableHead>Fecha Registro</TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
+                      <TableHead className="text-center">ID</TableHead>
+                      <TableHead className="text-center">Nombre Fantasía</TableHead>
+                      <TableHead className="text-center">CUIT</TableHead>
+                      <TableHead className="text-center">Teléfono</TableHead>
+                      <TableHead className="text-center">Nivel de Sostenibilidad</TableHead>
+                      <TableHead className="text-center">Segmentación</TableHead>
+                      <TableHead className="text-center">Acciones</TableHead>
+                      <TableHead className="text-center">Mas información</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {currentBodegas.map((bodega) => (
                       <TableRow key={bodega.id_bodega}>
-                        <TableCell className="font-medium">{bodega.id_bodega}</TableCell>
-                        <TableCell>{bodega.razon_social}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{bodega.nombre_fantasia}</TableCell>
+                        <TableCell className="text-center font-medium">{bodega.id_bodega}</TableCell>
+                        <TableCell className="text-center text-sm text-muted-foreground">{bodega.nombre_fantasia}</TableCell>
                         <TableCell className="text-sm">{bodega.cuit}</TableCell>
-                        <TableCell className="text-sm">{bodega.inv_bod || "-"}</TableCell>
-                        <TableCell className="text-sm">{bodega.inv_vin || "-"}</TableCell>
-                        <TableCell className="text-sm">
+                        <TableCell className="text-center text-sm">
                           {bodega.calle ? `${bodega.calle} ${bodega.numeracion}` : "-"}
                         </TableCell>
-                        <TableCell className="text-sm">{bodega.telefono || "-"}</TableCell>
-                        <TableCell className="text-sm">{bodega.email_institucional}</TableCell>
-                        <TableCell className="text-sm">{formatDate(bodega.fecha_registro)}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-center text-sm">{bodega.telefono || "-"}</TableCell>
+                        <TableCell className="text-center text-sm">{bodega.email_institucional}</TableCell>
+                        <TableCell className="text-center ">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleAbrirDialog(bodega)}
                           >
-                            <KeyRound className="h-4 w-4 mr-2" />
                             Cambiar contraseña
                           </Button>
                         </TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleAbrirInfo(bodega)}
+                          >
+                            ...
+                          </Button>
+                        </TableCell>
+                        
+
                       </TableRow>
                     ))}
                   </TableBody>
@@ -446,6 +459,62 @@ export default function GestionBodegasPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog más información */}
+      <Dialog open={dialogInfoOpen} onOpenChange={setDialogInfoOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Información de la Bodega</DialogTitle>
+            {bodegaInfo && (
+              <p className="text-sm text-muted-foreground">
+                {bodegaInfo.nombre_fantasia}
+              </p>
+            )}
+          </DialogHeader>
+
+          {bodegaInfo && (
+            <div className="space-y-3 py-2">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                <div>
+                  <p className="text-muted-foreground font-medium">Razón Social</p>
+                  <p>{bodegaInfo.razon_social || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-medium">INV Bodega</p>
+                  <p>{bodegaInfo.inv_bod || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-medium">INV Viñedo</p>
+                  <p>{bodegaInfo.inv_vin || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-medium">Dirección</p>
+                  <p>{bodegaInfo.calle ? `${bodegaInfo.calle} ${bodegaInfo.numeracion}` : "-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-medium">Provincia</p>
+                  <p>{(bodegaInfo as any).provincia || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-medium">Email Institucional</p>
+                  <p className="break-all">{bodegaInfo.email_institucional || "-"}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-muted-foreground font-medium">Fecha de Registro</p>
+                  <p>{formatDate(bodegaInfo.fecha_registro)}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogInfoOpen(false)}>
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   )
 }
