@@ -189,10 +189,11 @@ export async function guardarRespuestaIndividual(
 /**
  * Valida y finaliza la autoevaluación
  * @param idAutoevaluacion - ID de la autoevaluación
+ * @returns Datos de la autoevaluación finalizada incluyendo nivel_sostenibilidad
  */
 export async function completarAutoevaluacion(
     idAutoevaluacion: string | number
-): Promise<void> {
+): Promise<{ nivel_sostenibilidad?: { id_nivel_sostenibilidad: number; nombre: string }; puntaje_final?: number; [key: string]: unknown }> {
     const response = await fetch(`/api/autoevaluaciones/${idAutoevaluacion}/completar`, {
         method: 'POST',
         headers: getAuthHeaders(),
@@ -204,6 +205,8 @@ export async function completarAutoevaluacion(
     if (!response.ok) {
         throw new Error(data?.message || `Error ${response.status}: ${response.statusText}`)
     }
+
+    return data
 }
 
 /**

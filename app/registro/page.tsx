@@ -356,7 +356,23 @@ export default function RegistroPage() {
       await registrarBodega(registroData)
       router.push("/registro-exitoso")
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Ocurrio un error al registrar la bodega")
+      const errorMessage = err instanceof Error ? err.message : "Ocurrio un error al registrar la bodega"
+      const errorLower = errorMessage.toLowerCase()
+      
+      // Detectar si es error de email duplicado
+      if (errorLower.includes("email") && errorLower.includes("registrado")) {
+        setFieldErrors(prev => ({ ...prev, emailLogin: "Este email ya está registrado" }))
+        setTouched(prev => ({ ...prev, emailLogin: true }))
+        setError("El email ingresado ya se encuentra registrado en el sistema. Por favor, utilice otro email o inicie sesión.")
+      } 
+      // Detectar si es error de CUIT duplicado
+      else if (errorLower.includes("cuit") && errorLower.includes("registrado")) {
+        setFieldErrors(prev => ({ ...prev, cuit: "Este CUIT ya está registrado" }))
+        setTouched(prev => ({ ...prev, cuit: true }))
+        setError("El CUIT ingresado ya se encuentra registrado en el sistema. Por favor, verifique los datos.")
+      } else {
+        setError(errorMessage)
+      }
     } finally {
       setIsLoading(false)
     }
@@ -653,9 +669,14 @@ export default function RegistroPage() {
                   <Input
                     id="dni"
                     value={dni}
-                    onChange={(e) => handleFieldChange("dni", e.target.value, setDni)}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '').slice(0, 8)
+                      handleFieldChange("dni", value, setDni)
+                    }}
                     onBlur={() => handleBlur("dni", dni)}
                     placeholder="Ej: 12345678"
+                    maxLength={8}
+                    inputMode="numeric"
                     className={`h-11 ${getInputErrorClass("dni")}`}
                   />
                   {renderErrorMessage("dni")}

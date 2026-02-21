@@ -660,9 +660,15 @@ export default function AutoevaluacionPage() {
     if (!assessmentId) return
     setIsFinalizing(true)
 
-    // Intentar llamar a la API, pero no bloquear si falla
+    // Variable para almacenar el nivel del backend
+    let nivelBackend: string | null = null
+
+    // Intentar llamar a la API y capturar el nivel de sostenibilidad
     try {
-      await completarAutoevaluacion(assessmentId)
+      const resultadoBackend = await completarAutoevaluacion(assessmentId)
+      if (resultadoBackend?.nivel_sostenibilidad?.nombre) {
+        nivelBackend = resultadoBackend.nivel_sostenibilidad.nombre
+      }
     } catch (apiError) {
       console.warn('La API falló al finalizar, procediendo con guardado local:', apiError)
       // Continuamos flujo para guardar localmente
@@ -748,8 +754,8 @@ export default function AutoevaluacionPage() {
       }
       localStorage.setItem(`resultado_${assessmentId}`, JSON.stringify(resultData))
 
-      // Calcular el nivel de sostenibilidad basado en puntaje y segmento
-      const nivelCalculado = determineLevelByScoreAndSegment(totalScore, selectedSegment?.nombre)
+      // Usar el nivel del backend si está disponible, sino calcular localmente como fallback
+      const nivelSostenibilidad = nivelBackend || determineLevelByScoreAndSegment(totalScore, selectedSegment?.nombre).nombre
 
       // Guardar como último resultado completado para la vista principal de resultados
       // Usamos calculateChapterScoresWithResponses para incluir los indicadores y respuestas detalladas
@@ -757,7 +763,7 @@ export default function AutoevaluacionPage() {
         ...resultData,
         id_bodega: idBodega,
         capitulos: calculateChapterScoresWithResponses(responsesForScoring, estructura, evidencias, respuestaIds),
-        nivel_sostenibilidad: nivelCalculado.nombre
+        nivel_sostenibilidad: nivelSostenibilidad
       }
       localStorage.setItem('ultimo_resultado_completado', JSON.stringify(ultimoResultado))
 
@@ -1021,7 +1027,7 @@ export default function AutoevaluacionPage() {
 
               <Button
                 variant="outline"
-                onClick={() => router.push('/')}
+                onClick={() => router.push('/dashboard')}
                 className="w-full sm:w-auto border-primary text-primary hover:bg-primary hover:text-white"
               >
                 Guardar y Salir
