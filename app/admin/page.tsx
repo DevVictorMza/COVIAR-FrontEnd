@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Building2, FileCheck, AlertCircle } from "lucide-react"
-import { getAdminStats, type AdminStats } from "@/lib/api/admin"
+import { getAdminStats, type AdminStats, type SegmentoDistribucion } from "@/lib/api/admin"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
@@ -26,31 +26,16 @@ const NIVEL_COLOR: Record<string, string> = {
   "Nivel alto de sostenibilidad":   COLORS.alto,
 }
 
-// ─── Tipos para distribución por tipo de bodega ────────────────────────────────
-
-interface NivelesPorTipo {
-  alto:   number
-  medio:  number
-  minimo: number
-}
-
-// Tipos de bodega en el orden deseado
-const TIPOS_BODEGA: { key: string; label: string }[] = [
-  { key: "microArtesanal",  label: "Micro Bodega Turística / Artesanal" },
-  { key: "pequeña",         label: "Pequeña Bodega Turística" },
-  { key: "mediana",         label: "Mediana Bodega Turística" },
-  { key: "bodega",          label: "Bodega Turística" },
-  { key: "gran",            label: "Gran Bodega Turística" },
-]
+// SegmentoDistribucion is imported from admin.ts
 
 // ─── Tooltip personalizado para el BarChart ────────────────────────────────────
 
 function BarTooltip({ active, payload }: { active?: boolean; payload?: any[] }) {
   if (active && payload?.length) {
-    const { name, value } = payload[0]
+    const { value, payload: data } = payload[0]
     return (
       <div className="bg-gray-900 text-white rounded-lg shadow-xl px-3 py-2 text-xs">
-        <p className="font-semibold">{name}</p>
+        <p className="font-semibold">{data.name}</p>
         <p>{value} {value === 1 ? "bodega" : "bodegas"}</p>
       </div>
     )
@@ -108,8 +93,7 @@ export default function AdminDashboard() {
   const sinDatos = [{ name: "Sin datos", value: 1, color: COLORS.vacio }]
   const nivelColor = NIVEL_COLOR[stats?.nivelPromedio ?? ""] ?? "#374151"
 
-  const distribucionPorTipo: Record<string, NivelesPorTipo> =
-    (stats as any)?.distribucionPorTipo ?? {}
+  const distribucionPorSegmento: SegmentoDistribucion[] = stats?.distribucionPorSegmento ?? []
 
   return (
     <div className="p-8 space-y-8">
@@ -230,27 +214,36 @@ export default function AdminDashboard() {
       </div>
       <div className="mt-4"><h1 className="text-3xl font-bold">Niveles de sostenibilidad por segmentación</h1></div>
 
-      {/* ── Fila inferior: 5 gráficos de barras por tipo de bodega ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {TIPOS_BODEGA.map(({ key, label }) => {
-          const niveles = distribucionPorTipo[key] ?? { alto: 0, medio: 0, minimo: 0 }
-
-          const barData = [
-            { nivel: "Alto",  name: "Nivel alto de sostenibilidad",   value: niveles.alto,   fill: COLORS.alto   },
-            { nivel: "Medio", name: "Nivel medio de sostenibilidad",   value: niveles.medio,  fill: COLORS.medio  },
-            { nivel: "Bajo",  name: "Nivel mínimo de sostenibilidad",  value: niveles.minimo, fill: COLORS.minimo },
-          ]
-          return (
-            <Card key={key} className="bg-white border border-gray-200 shadow-sm flex flex-col">
-              <CardHeader className="pb-1 px-4 pt-4">
-                <CardTitle className="text-xs font-bold text-gray-700 text-center leading-tight">
-                  {label}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col items-center justify-center pt-2 pb-4 px-2">
-                {isLoading ? (
-                  <Skeleton className="h-36 w-full" />
-                ) : (
+      {/* ── Fila inferior: gráficos de barras por segmento ── */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-52 w-full rounded-xl" />)}
+        </div>
+      ) : distribucionPorSegmento.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-8">No hay datos de segmentación disponibles</p>
+      ) : (
+        <div
+          className="grid gap-4"
+          style={{ gridTemplateColumns: `repeat(${Math.min(distribucionPorSegmento.length, 5)}, minmax(0, 1fr))` }}
+        >
+          {distribucionPorSegmento.map((seg) => {
+            const barData = [
+              { nivel: "Alto",  name: "Nivel alto de sostenibilidad",  value: seg.alto,   fill: COLORS.alto   },
+              { nivel: "Medio", name: "Nivel medio de sostenibilidad", value: seg.medio,  fill: COLORS.medio  },
+              { nivel: "Bajo",  name: "Nivel mínimo de sostenibilidad",value: seg.minimo, fill: COLORS.minimo },
+            ]
+            const total = seg.alto + seg.medio + seg.minimo
+            return (
+              <Card key={seg.id_segmento} className="bg-white border border-gray-200 shadow-sm flex flex-col">
+                <CardHeader className="pb-1 px-4 pt-4">
+                  <CardTitle className="text-xs font-bold text-gray-700 text-center leading-tight">
+                    {seg.nombre_segmento}
+                  </CardTitle>
+                  <p className="text-xs text-center text-muted-foreground mt-0.5">
+                    {total} {total === 1 ? "bodega" : "bodegas"}
+                  </p>
+                </CardHeader>
+                <CardContent className="flex-1 flex flex-col items-center justify-center pt-2 pb-4 px-2">
                   <ResponsiveContainer width="100%" height={160}>
                     <BarChart
                       data={barData}
@@ -275,19 +268,19 @@ export default function AdminDashboard() {
                         content={<BarTooltip />}
                         cursor={{ fill: "rgba(0,0,0,0.04)" }}
                       />
-                      <Bar dataKey="value" radius={[4, 4, 0, 0]} isAnimationActive={true} animationDuration={700}>
+                      <Bar dataKey="value" radius={[4, 4, 0, 0]} isAnimationActive animationDuration={700}>
                         {barData.map((entry, index) => (
                           <Cell key={index} fill={entry.fill} name={entry.name} />
                         ))}
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

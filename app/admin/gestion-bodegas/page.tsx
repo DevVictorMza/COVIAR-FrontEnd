@@ -16,7 +16,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { AlertCircle, Search, Building2, Filter, ChevronLeft, ChevronRight, Loader2, KeyRound, Eye, EyeOff } from "lucide-react"
+import { AlertCircle, Search, Building2, Filter, ChevronLeft, ChevronRight, Loader2, KeyRound, Eye, EyeOff, Info } from "lucide-react"
 
 interface Bodega {
   id_bodega: number
@@ -30,6 +30,14 @@ interface Bodega {
   numeracion: string
   email_institucional: string
   fecha_registro: string
+  segmento: string | null
+  nivel_sostenibilidad: string | null
+  localidad: string | null
+  departamento: string | null
+  provincia: string | null
+  email_cuenta: string | null
+  fecha_ultima_evaluacion: string | null
+  responsable_activo: string | null
 }
 
 export default function GestionBodegasPage() {
@@ -284,35 +292,42 @@ export default function GestionBodegasPage() {
                   </TableHeader>
                   <TableBody>
                     {currentBodegas.map((bodega) => (
-                      <TableRow key={bodega.id_bodega}>
-                        <TableCell className="text-center font-medium">{bodega.id_bodega}</TableCell>
-                        <TableCell className="text-center text-sm text-muted-foreground">{bodega.nombre_fantasia}</TableCell>
-                        <TableCell className="text-sm">{bodega.cuit}</TableCell>
-                        <TableCell className="text-center text-sm">
-                          {bodega.calle ? `${bodega.calle} ${bodega.numeracion}` : "-"}
+                      <TableRow key={bodega.id_bodega} className="text-xs">
+                        <TableCell className="text-center font-medium py-2 px-2">{bodega.id_bodega}</TableCell>
+                        <TableCell className="text-center py-2 px-2">{bodega.nombre_fantasia}</TableCell>
+                        <TableCell className="text-center py-2 px-2">{bodega.cuit}</TableCell>
+                        <TableCell className="text-center py-2 px-2">{bodega.telefono || "-"}</TableCell>
+                        <TableCell className="text-center py-2 px-2">
+                          {bodega.nivel_sostenibilidad ?? (
+                            <span className="text-muted-foreground italic">Sin evaluación</span>
+                          )}
                         </TableCell>
-                        <TableCell className="text-center text-sm">{bodega.telefono || "-"}</TableCell>
-                        <TableCell className="text-center text-sm">{bodega.email_institucional}</TableCell>
-                        <TableCell className="text-center ">
+                        <TableCell className="text-center py-2 px-2">
+                          {bodega.segmento ?? (
+                            <span className="text-muted-foreground italic">Sin evaluación</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center py-2 px-2">
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => handleAbrirDialog(bodega)}
+                            className="gap-1 h-7 px-2 text-xs"
                           >
+                            <KeyRound className="h-3 w-3" />
                             Cambiar contraseña
                           </Button>
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center py-2 px-2">
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => handleAbrirInfo(bodega)}
+                            className="h-7 px-2 text-xs"
                           >
                             ...
                           </Button>
                         </TableCell>
-                        
-
                       </TableRow>
                     ))}
                   </TableBody>
@@ -488,20 +503,40 @@ export default function GestionBodegasPage() {
                   <p>{bodegaInfo.inv_vin || "-"}</p>
                 </div>
                 <div>
+                  <p className="text-muted-foreground font-medium">Provincia</p>
+                  <p>{bodegaInfo.provincia || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-medium">Departamento</p>
+                  <p>{bodegaInfo.departamento || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-medium">Localidad</p>
+                  <p>{bodegaInfo.localidad || "-"}</p>
+                </div>
+                <div>
                   <p className="text-muted-foreground font-medium">Dirección</p>
                   <p>{bodegaInfo.calle ? `${bodegaInfo.calle} ${bodegaInfo.numeracion}` : "-"}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground font-medium">Provincia</p>
-                  <p>{(bodegaInfo as any).provincia || "-"}</p>
+                  <p className="text-muted-foreground font-medium">Responsable Activo</p>
+                  <p>{bodegaInfo.responsable_activo || "-"}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground font-medium">Email Institucional</p>
                   <p className="break-all">{bodegaInfo.email_institucional || "-"}</p>
                 </div>
-                <div className="col-span-2">
+                <div>
+                  <p className="text-muted-foreground font-medium">Email de Cuenta</p>
+                  <p className="break-all">{bodegaInfo.email_cuenta || "-"}</p>
+                </div>
+                <div>
                   <p className="text-muted-foreground font-medium">Fecha de Registro</p>
                   <p>{formatDate(bodegaInfo.fecha_registro)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-medium">Fecha Última Evaluación</p>
+                  <p>{formatDate(bodegaInfo.fecha_ultima_evaluacion)}</p>
                 </div>
               </div>
             </div>

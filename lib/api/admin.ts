@@ -1,16 +1,25 @@
 // /lib/api/admin.ts
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
+export interface SegmentoDistribucion {
+  id_segmento: number
+  nombre_segmento: string
+  alto: number
+  medio: number
+  minimo: number
+}
+
 export interface AdminStats {
   totalBodegas: number
   evaluacionesCompletadas: number
   promedioSostenibilidad: number
-  nivelPromedio: "Nivel mínimo de sostenibilidad" | "Nivel medio de sostenibilidad" | "Nivel alto de sostenilidad"
+  nivelPromedio: "Nivel mínimo de sostenibilidad" | "Nivel medio de sostenibilidad" | "Nivel alto de sostenibilidad"
   distribucionNiveles: {
     minimo: number
     medio: number
     alto: number
   }
+  distribucionPorSegmento: SegmentoDistribucion[]
 }
 
 export interface EvaluacionListItem {
