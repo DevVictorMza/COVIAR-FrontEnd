@@ -31,7 +31,7 @@ export function ChapterProgressCard({ capitulo }: ChapterProgressCardProps) {
                         {capitulo.indicadores_completados}/{capitulo.indicadores_total} indicadores
                     </span>
                     <span className="font-bold" style={{ color }}>
-                        {capitulo.porcentaje}%
+                        {Math.round(capitulo.porcentaje)}%
                     </span>
                 </div>
 

@@ -57,7 +57,7 @@ export function ChapterBarChart({ data, className }: ChapterBarChartProps) {
                                             <div className="space-y-1">
                                                 <div className="flex justify-between items-center text-sm">
                                                     <span className="text-muted-foreground">Porcentaje:</span>
-                                                    <span className="font-bold text-[#880D1E]">{data.porcentaje}%</span>
+                                                    <span className="font-bold text-[#880D1E]">{Math.round(data.porcentaje)}%</span>
                                                 </div>
                                                 <div className="flex justify-between items-center text-sm">
                                                     <span className="text-muted-foreground">Puntaje:</span>

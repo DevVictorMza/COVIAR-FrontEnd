@@ -1,9 +1,16 @@
 // /lib/api/admin.ts
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
 export interface AdminStats {
   totalBodegas: number
   evaluacionesCompletadas: number
   promedioSostenibilidad: number
+  nivelPromedio: "Nivel mínimo de sostenibilidad" | "Nivel medio de sostenibilidad" | "Nivel alto de sostenilidad"
+  distribucionNiveles: {
+    minimo: number
+    medio: number
+    alto: number
+  }
 }
 
 export interface EvaluacionListItem {
@@ -12,11 +19,35 @@ export interface EvaluacionListItem {
   nombre_bodega: string
   razon_social: string
   estado: 'PENDIENTE' | 'COMPLETADA' | 'CANCELADA'
-  porcentaje: number | null
   fecha_inicio: string
   fecha_fin: string | null
   responsable: string
 }
+
+// Interfaces gestión autoevaluación
+export interface Nivel {
+  id_nivel: number
+  numero_nivel: number
+  descripcion: string
+  puntaje: number
+}
+
+export interface Indicador {
+  id_indicador: number
+  numero_indicador: string
+  nombre: string
+  descripcion: string
+  niveles: Nivel[]
+}
+
+export interface Capitulo {
+  id_capitulo: number
+  numero_capitulo: number
+  nombre: string
+  descripcion: string
+  indicadores: Indicador[]
+}
+
 
 export async function getAdminStats(): Promise<AdminStats> {
   try {
@@ -66,4 +97,82 @@ export async function getEvaluaciones(estado?: string, idBodega?: number): Promi
     console.error('Error al obtener evaluaciones:', error)
     throw error
   }
+}
+
+
+// GESTIÓN DE AUTOEVALUACIÓN
+
+// Obtener todos los capítulos con sus indicadores y niveles
+export async function getCapitulos(): Promise<Capitulo[]> {
+  const response = await fetch(`${API_BASE_URL}/api/admin/capitulos`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+  })
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}))
+    throw new Error(data.message || `Error ${response.status}: ${response.statusText}`)
+  }
+
+  return response.json()
+}
+
+// Actualizar capítulo
+export async function updateCapitulo(id: number, data: { nombre?: string; descripcion?: string }) {
+  const response = await fetch(`${API_BASE_URL}/api/admin/capitulos/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(data),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error(errorData.message || `Error ${response.status}`)
+  }
+
+  return response.json()
+}
+
+// Actualizar indicador
+export async function updateIndicador(id: number, data: { nombre?: string; descripcion?: string }) {
+  const response = await fetch(`${API_BASE_URL}/api/admin/indicadores/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(data),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error(errorData.message || `Error ${response.status}`)
+  }
+
+  return response.json()
+}
+
+// Actualizar nivel
+export async function updateNivel(id: number, data: { descripcion?: string; puntaje?: number }) {
+  const response = await fetch(`${API_BASE_URL}/api/admin/niveles/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(data),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error(errorData.message || `Error ${response.status}`)
+  }
+
+  return response.json()
 }

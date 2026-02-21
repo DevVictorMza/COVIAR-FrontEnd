@@ -364,26 +364,107 @@ export async function obtenerEvidencia(
     idAutoevaluacion: string | number,
     idRespuesta: number
 ): Promise<Evidencia | null> {
-    const response = await fetch(
-        `/api/autoevaluaciones/${idAutoevaluacion}/respuestas/${idRespuesta}/evidencias`,
-        {
-            method: 'GET',
-            headers: getAuthHeaders(),
-            credentials: 'include',
-        }
-    )
+    const url = `/api/autoevaluaciones/${idAutoevaluacion}/respuestas/${idRespuesta}/evidencia`
+    console.log(`📋 obtenerEvidencia: GET ${url}`)
+
+    const response = await fetch(url, {
+        method: 'GET',
+        headers: getAuthHeaders(),
+        credentials: 'include',
+    })
 
     const data = await response.json().catch(() => ({}))
 
     if (!response.ok) {
-        if (response.status === 404) return null
+        if (response.status === 404) {
+            console.log(`ℹ️ No hay evidencia para respuesta ${idRespuesta} (404)`)
+            return null
+        }
+        console.error(`❌ obtenerEvidencia: Error ${response.status}`, data)
         throw new Error(data?.message || `Error ${response.status}: ${response.statusText}`)
     }
 
-    // La API puede devolver un objeto con evidencia o un array
-    if (data.evidencia) return data.evidencia as Evidencia
-    if (Array.isArray(data.evidencias) && data.evidencias.length > 0) return data.evidencias[0] as Evidencia
-    return data as Evidencia
+    console.log(`📦 obtenerEvidencia: Respuesta recibida`, JSON.stringify(data))
+
+    // La API puede devolver un objeto con evidencia en data.evidencia
+    if (data.evidencia) {
+        const evidencia = data.evidencia
+        // Normalizar: asegurar que tenga nombre_archivo
+        if (evidencia.nombre && !evidencia.nombre_archivo) {
+            evidencia.nombre_archivo = evidencia.nombre
+        }
+        console.log(`✅ Evidencia encontrada en data.evidencia:`, evidencia.nombre_archivo || evidencia.nombre)
+        return evidencia as Evidencia
+    }
+    if (data.nombre_archivo || data.nombre) {
+        // Normalizar el campo nombre_archivo si viene como "nombre"
+        if (data.nombre && !data.nombre_archivo) {
+            data.nombre_archivo = data.nombre
+        }
+        console.log(`✅ Evidencia encontrada directamente en data:`, data.nombre_archivo)
+        return data as Evidencia
+    }
+
+    console.warn(`⚠️ obtenerEvidencia: Estructura de respuesta no reconocida. Keys:`, Object.keys(data))
+    console.warn(`⚠️ Datos completos:`, JSON.stringify(data))
+    return null
+}
+
+/**
+ * Obtiene la evidencia de un indicador (alternativa que usa id_indicador en lugar de id_respuesta)
+ * @param idAutoevaluacion - ID de la autoevaluación
+ * @param idIndicador - ID del indicador
+ * @returns Evidencia del indicador o null si no existe
+ */
+export async function obtenerEvidenciaPorIndicador(
+    idAutoevaluacion: string | number,
+    idIndicador: number
+): Promise<Evidencia | null> {
+    const url = `/api/autoevaluaciones/${idAutoevaluacion}/evidencias?id_indicador=${idIndicador}`
+    console.log(`📋 obtenerEvidenciaPorIndicador: GET ${url}`)
+
+    const response = await fetch(url, {
+        method: 'GET',
+        headers: getAuthHeaders(),
+        credentials: 'include',
+    })
+
+    const data = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+        if (response.status === 404) {
+            console.log(`ℹ️ No hay evidencia para indicador ${idIndicador} (404)`)
+            return null
+        }
+        console.error(`❌ obtenerEvidenciaPorIndicador: Error ${response.status}`, data)
+        throw new Error(data?.message || `Error ${response.status}: ${response.statusText}`)
+    }
+
+    console.log(`📦 obtenerEvidenciaPorIndicador: Respuesta recibida`, JSON.stringify(data))
+
+    // Procesar la respuesta similar a obtenerEvidencia
+    if (data.evidencia) {
+        const evidencia = data.evidencia
+        if (evidencia.nombre && !evidencia.nombre_archivo) {
+            evidencia.nombre_archivo = evidencia.nombre
+        }
+        console.log(`✅ Evidencia encontrada (id_respuesta: ${evidencia.id_respuesta}):`, evidencia.nombre_archivo || evidencia.nombre)
+        return evidencia as Evidencia
+    }
+    if (Array.isArray(data.evidencias) && data.evidencias.length > 0) {
+        console.warn(`⚠️ API retornó un array de evidencias general al solicitar por indicador ${idIndicador}. Bloqueado para evitar clonación visual.`)
+        return null
+    }
+    if (data.nombre_archivo || data.nombre) {
+        if (data.nombre && !data.nombre_archivo) {
+            data.nombre_archivo = data.nombre
+        }
+        console.log(`✅ Evidencia encontrada (id_respuesta: ${data.id_respuesta}):`, data.nombre_archivo)
+        return data as Evidencia
+    }
+
+    console.log(`ℹ️ No se encontró evidencia para indicador ${idIndicador}`)
+    return null
 }
 
 /**
@@ -397,7 +478,7 @@ export async function eliminarEvidencia(
 ): Promise<void> {
     const url = `/api/autoevaluaciones/${idAutoevaluacion}/respuestas/${idRespuesta}/evidencia`
     console.log(`eliminarEvidencia: DELETE ${url}`)
-    
+
     const response = await fetch(url, {
         method: 'DELETE',
         headers: getAuthHeaders(),
@@ -410,7 +491,7 @@ export async function eliminarEvidencia(
         console.error('eliminarEvidencia: Error', response.status, JSON.stringify(data))
         throw new Error(data?.message || `Error ${response.status}: ${response.statusText}`)
     }
-    
+
     console.log('eliminarEvidencia: Éxito')
 }
 
@@ -447,21 +528,21 @@ export async function descargarEvidencia(
 
     // Obtener el blob del archivo
     const blob = await response.blob()
-    
+
     // Crear URL temporal para el blob
     const blobUrl = window.URL.createObjectURL(blob)
-    
+
     // Obtener nombre del archivo del header Content-Disposition
     const contentDisposition = response.headers.get('Content-Disposition')
     let filename = `evidencia_${idRespuesta}.pdf`
-    
+
     if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
         if (filenameMatch && filenameMatch[1]) {
             filename = filenameMatch[1].replace(/['"]/g, '')
         }
     }
-    
+
     // Crear link temporal y hacer click para iniciar descarga
     const link = document.createElement('a')
     link.href = blobUrl
@@ -469,10 +550,10 @@ export async function descargarEvidencia(
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    
+
     // Limpiar el URL temporal
     setTimeout(() => window.URL.revokeObjectURL(blobUrl), 100)
-    
+
     console.log('descargarEvidencia: Descarga iniciada', filename)
 }
 

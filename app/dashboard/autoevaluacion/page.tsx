@@ -88,6 +88,50 @@ export default function AutoevaluacionPage() {
   // Estado para mapeo de id_indicador -> id_respuesta (del backend)
   const [respuestaIds, setRespuestaIds] = useState<Record<number, number>>({})
 
+  // Función auxiliar para cargar evidencias existentes
+  const cargarEvidenciasExistentes = async (autoId: string, respuestaIdMap: Record<number, number>) => {
+    if (Object.keys(respuestaIdMap).length === 0) {
+      console.log('⚠️ No hay respuestas con id_respuesta, no se pueden cargar evidencias')
+      return
+    }
+
+    console.log('🔄 Cargando evidencias existentes...')
+    console.log('📋 Mapa de respuestas:', respuestaIdMap)
+    const evidenciasMap: Record<number, string | null> = {}
+    let cargadas = 0
+    let errores = 0
+    
+    for (const [idIndicadorStr, idRespuesta] of Object.entries(respuestaIdMap)) {
+      const idIndicador = parseInt(idIndicadorStr)
+      try {
+        console.log(`🔍 Buscando evidencia para indicador ${idIndicador}, respuesta ${idRespuesta}`)
+        const evidencia = await obtenerEvidencia(autoId, idRespuesta)
+        
+        if (evidencia?.nombre_archivo) {
+          evidenciasMap[idIndicador] = evidencia.nombre_archivo
+          cargadas++
+          console.log(`📎 Evidencia cargada para indicador ${idIndicador}:`, evidencia.nombre_archivo)
+        } else if (evidencia) {
+          // El objeto evidencia existe pero no tiene nombre_archivo
+          console.warn(`⚠️ Evidencia existe pero sin nombre_archivo para indicador ${idIndicador}:`, evidencia)
+        } else {
+          console.log(`ℹ️ No hay evidencia para indicador ${idIndicador}`)
+        }
+      } catch (error) {
+        errores++
+        console.error(`❌ Error al cargar evidencia para indicador ${idIndicador}:`, error)
+      }
+    }
+    
+    console.log(`📊 Resumen: ${cargadas} evidencias cargadas, ${errores} errores`)
+    
+    if (Object.keys(evidenciasMap).length > 0) {
+      setEvidencias(evidenciasMap)
+      console.log(`✅ Estado actualizado con ${Object.keys(evidenciasMap).length} evidencias`, evidenciasMap)
+    } else {
+      console.log('ℹ️ No se encontraron evidencias para cargar')
+    }
+  }
 
   // Obtener usuario e id_bodega
   useEffect(() => {
@@ -251,7 +295,7 @@ export default function AutoevaluacionPage() {
 
           console.log(`📊 Respuestas guardadas procesadas: ${savedResponses.length} respuestas, ${Object.keys(respuestaIdMap).length} con id_respuesta`)
           if (savedResponses.length > 0 && Object.keys(respuestaIdMap).length === 0) {
-            console.warn('⚠️ Ninguna respuesta tiene id_respuesta. Estructura de respuesta:', savedResponses[0])
+            console.warn('⚠️ Backend no devolvió id_respuesta. Intentando cargar desde evidencias...')
           }
 
           // Buscar el nivel de puntos para cada respuesta guardada
@@ -273,30 +317,61 @@ export default function AutoevaluacionPage() {
           })
           setResponses(responsesMap)
           setResponsesForApi(apiResponsesMap)
-          // Cargar mapeo de id_respuesta si está disponible
-          if (Object.keys(respuestaIdMap).length > 0) {
-            setRespuestaIds(respuestaIdMap)
-            console.log('Mapeo id_indicador -> id_respuesta cargado:', respuestaIdMap)
-            
-            // Cargar evidencias existentes para cada respuesta
+          
+          // WORKAROUND: Si el backend no devuelve id_respuesta, intentar obtenerlos desde las evidencias
+          // Esto funciona porque las evidencias SÍ incluyen id_respuesta en su respuesta
+          if (Object.keys(respuestaIdMap).length === 0) {
+            console.log('🔍 Buscando id_respuesta desde evidencias existentes...')
             const evidenciasMap: Record<number, string | null> = {}
-            for (const [idIndicadorStr, idRespuesta] of Object.entries(respuestaIdMap)) {
+            const respuestaIdMapFromEvidencias: Record<number, number> = {}
+            
+            // Importar la función que consulta por indicador
+            const { obtenerEvidenciaPorIndicador } = await import('@/lib/api/autoevaluacion')
+            
+            // Intentar cargar evidencia para cada indicador con respuesta guardada
+            for (const idIndicador of uniqueResponses.keys()) {
               try {
-                const evidencia = await obtenerEvidencia(autoId, idRespuesta)
-                if (evidencia?.nombre) {
-                  evidenciasMap[parseInt(idIndicadorStr)] = evidencia.nombre
-                  console.log(`📎 Evidencia cargada para indicador ${idIndicadorStr}:`, evidencia.nombre)
+                const evidencia = await obtenerEvidenciaPorIndicador(autoId, idIndicador)
+                if (evidencia && (evidencia.nombre_archivo || evidencia.nombre)) {
+                  const nombreArchivo = evidencia.nombre_archivo || evidencia.nombre || ''
+                  evidenciasMap[idIndicador] = nombreArchivo
+                  // CLAVE: Extraer id_respuesta de la respuesta de evidencia
+                  if (evidencia.id_respuesta) {
+                    respuestaIdMapFromEvidencias[idIndicador] = evidencia.id_respuesta
+                    console.log(`✅ Evidencia encontrada para indicador ${idIndicador}: "${nombreArchivo}" (id_respuesta: ${evidencia.id_respuesta})`)
+                  } else {
+                    console.log(`✅ Evidencia encontrada para indicador ${idIndicador}: "${nombreArchivo}" (sin id_respuesta)`)
+                  }
+                } else {
+                  evidenciasMap[idIndicador] = null
                 }
               } catch (error) {
-                // Si no hay evidencia o hay error, simplemente no se agrega al map
-                console.log(`No hay evidencia para indicador ${idIndicadorStr}`)
+                // No hay evidencia para este indicador, continuar
+                evidenciasMap[idIndicador] = null
               }
             }
-            if (Object.keys(evidenciasMap).length > 0) {
+            
+            // Actualizar estado con evidencias encontradas
+            const evidenciasEncontradas = Object.keys(evidenciasMap).filter(k => evidenciasMap[parseInt(k)] !== null).length
+            if (evidenciasEncontradas > 0) {
               setEvidencias(evidenciasMap)
-              console.log(`✅ Cargadas ${Object.keys(evidenciasMap).length} evidencias existentes`)
+              console.log(`📎 Cargadas ${evidenciasEncontradas} evidencias desde el servidor`)
             }
+            
+            // Actualizar mapeo de id_respuesta si se encontraron
+            if (Object.keys(respuestaIdMapFromEvidencias).length > 0) {
+              setRespuestaIds(respuestaIdMapFromEvidencias)
+              console.log(`🆔 Mapeo id_respuesta extraído desde evidencias:`, respuestaIdMapFromEvidencias)
+            }
+          } else {
+            // El backend SÍ devolvió id_respuesta (caso ideal)
+            setRespuestaIds(respuestaIdMap)
+            console.log('Mapeo id_indicador -> id_respuesta cargado desde backend:', respuestaIdMap)
+            
+            // Cargar evidencias existentes usando función auxiliar
+            await cargarEvidenciasExistentes(autoId, respuestaIdMap)
           }
+          
           console.log(`✅ Cargadas ${Object.keys(apiResponsesMap).length} respuestas guardadas (únicas)`)
         }
 
@@ -414,8 +489,26 @@ export default function AutoevaluacionPage() {
     const idRespuestaAnterior = respuestaIds[idIndicador]
     const tieneEvidencia = evidencias[idIndicador]
     
-    // Si la respuesta está cambiando (es diferente) y hay evidencia asociada, eliminarla
-    if (respuestaAnterior !== undefined && respuestaAnterior !== newNivelId && idRespuestaAnterior && tieneEvidencia) {
+    // CASO 1: Si está cambiando a "Mínimo no alcanzado" (puntos = 0) y tiene evidencia, eliminarla
+    // (No se puede tener evidencia si no se alcanza el mínimo)
+    if (newLevel === 0 && idRespuestaAnterior && tieneEvidencia) {
+      console.log(`🗑️ Eliminando evidencia al cambiar a "Mínimo no alcanzado" (indicador ${idIndicador})`)
+      try {
+        await eliminarEvidencia(assessmentId, idRespuestaAnterior)
+        // Limpiar el estado de evidencias para este indicador
+        setEvidencias(prev => {
+          const updated = { ...prev }
+          delete updated[idIndicador]
+          return updated
+        })
+        console.log(`✅ Evidencia eliminada exitosamente`)
+      } catch (error) {
+        console.error('❌ Error al eliminar evidencia:', error)
+        // Continuar con el cambio de respuesta aunque falle la eliminación
+      }
+    }
+    // CASO 2: Si la respuesta está cambiando (es diferente) y hay evidencia asociada, eliminarla
+    else if (respuestaAnterior !== undefined && respuestaAnterior !== newNivelId && idRespuestaAnterior && tieneEvidencia) {
       console.log(`🗑️ Eliminando evidencia anterior del indicador ${idIndicador} (respuesta ${idRespuestaAnterior})`)
       try {
         await eliminarEvidencia(assessmentId, idRespuestaAnterior)
@@ -714,6 +807,13 @@ export default function AutoevaluacionPage() {
       )
 
       setEstructura(capitulosFiltrados)
+      
+      // Cargar evidencias si hay respuestas guardadas
+      if (Object.keys(respuestaIds).length > 0) {
+        console.log('🔄 Recargando evidencias después de cambiar segmento...')
+        await cargarEvidenciasExistentes(currentId, respuestaIds)
+      }
+      
       if (capitulosFiltrados.length > 0) {
         // Mostramos el modal y mantenemos isSelectingSegment=true para que se renderice el modal sobre la lista
         setShowConfirmationModal(true)
@@ -887,8 +987,8 @@ export default function AutoevaluacionPage() {
                       ))}
                     </RadioGroup>
 
-                    {/* Botón de carga de evidencia PDF - solo visible si hay respuesta seleccionada */}
-                    {assessmentId && savedValue !== undefined && (
+                    {/* Botón de carga de evidencia PDF - solo visible si hay respuesta seleccionada Y no es "Mínimo no alcanzado" (puntos > 0) */}
+                    {assessmentId && savedValue !== undefined && savedValue > 0 && (
                       <EvidenciaUpload
                         idAutoevaluacion={assessmentId}
                         idIndicador={indicadorWrapper.indicador.id_indicador}

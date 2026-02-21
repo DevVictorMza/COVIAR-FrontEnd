@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
+import Image from "next/image"
 import { ArrowLeft } from "lucide-react"
 
 export default function RecuperarContrasenaPage() {
@@ -56,8 +57,14 @@ export default function RecuperarContrasenaPage() {
       <Card className="relative z-10 w-full max-w-md overflow-hidden p-0 shadow-2xl border-0">
         <CardHeader className="bg-white border-b p-8">
           <div className="flex justify-center mb-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/assets/logos/logocolorhorz.png" alt="Coviar" className="h-20 object-contain" />
+            <Image
+              src="/assets/logos/logocolorhorz.png"
+              alt="Coviar"
+              width={500}
+              height={200}
+              className="h-52 w-auto object-contain"
+              priority
+            />
           </div>
           <CardTitle className="text-2xl text-center font-serif text-coviar-borravino font-bold">Recuperar Contraseña</CardTitle>
           <CardDescription className="text-gray-500 text-center">

@@ -15,26 +15,34 @@ export interface RespuestasMap {
  * Colores basados en la guía institucional
  */
 export const NIVELES_SOSTENIBILIDAD = [
-    { key: 'minimo', nombre: 'Nivel Mínimo de Sostenibilidad', color: '#84CC16', descripcion: 'Cumple con los requisitos mínimos de sostenibilidad' },
-    { key: 'medio', nombre: 'Nivel Medio de Sostenibilidad', color: '#22C55E', descripcion: 'Buenas prácticas de sostenibilidad implementadas' },
-    { key: 'alto', nombre: 'Nivel Alto de Sostenibilidad', color: '#15803D', descripcion: 'Excelencia en sostenibilidad enoturística' },
+    { key: 'no_alcanza', nombre: 'No alcanza nivel mínimo de sostenibilidad', color: '#EF4444', descripcion: 'No cumple con los requisitos mínimos de sostenibilidad' },
+    { key: 'minimo', nombre: 'Nivel mínimo de sostenibilidad', color: '#84CC16', descripcion: 'Cumple con los requisitos mínimos de sostenibilidad' },
+    { key: 'medio', nombre: 'Nivel medio de sostenibilidad', color: '#22C55E', descripcion: 'Buenas prácticas de sostenibilidad implementadas' },
+    { key: 'alto', nombre: 'Nivel alto de sostenibilidad', color: '#15803D', descripcion: 'Excelencia en sostenibilidad enoturística' },
 ]
 
 /**
- * Mapea el nombre del nivel del backend al nivel oficial con su color
+ * Mapea el nombre del nivel del backend al nivel oficial con su color, respetando el texto
  */
 export function getNivelSostenibilidadInfo(nombreBackend: string): { nombre: string; color: string; key: string } {
+    if (!nombreBackend) {
+        return { ...NIVELES_SOSTENIBILIDAD[0], key: 'no_alcanza', nombre: 'No evaluado' }
+    }
+
     const nombreLower = nombreBackend.toLowerCase()
-    
-    // Mapear variantes del backend a los niveles oficiales
-    if (nombreLower.includes('alto') || nombreLower.includes('avanzado') || nombreLower.includes('ejemplar')) {
-        return { ...NIVELES_SOSTENIBILIDAD[2], key: 'alto' }
+    let baseNivel
+
+    if (nombreLower.includes('no alcanza')) {
+        baseNivel = NIVELES_SOSTENIBILIDAD[0]
+    } else if (nombreLower.includes('alto') || nombreLower.includes('avanzado') || nombreLower.includes('ejemplar')) {
+        baseNivel = NIVELES_SOSTENIBILIDAD[3]
+    } else if (nombreLower.includes('medio') || nombreLower.includes('intermedio') || nombreLower.includes('consolidado')) {
+        baseNivel = NIVELES_SOSTENIBILIDAD[2]
+    } else {
+        baseNivel = NIVELES_SOSTENIBILIDAD[1]
     }
-    if (nombreLower.includes('medio') || nombreLower.includes('intermedio') || nombreLower.includes('consolidado')) {
-        return { ...NIVELES_SOSTENIBILIDAD[1], key: 'medio' }
-    }
-    // Por defecto: nivel mínimo (incluye 'mínimo', 'inicial', 'en desarrollo', etc.)
-    return { ...NIVELES_SOSTENIBILIDAD[0], key: 'minimo' }
+
+    return { ...baseNivel, nombre: nombreBackend, key: baseNivel.key }
 }
 
 export interface NivelSostenibilidad {
@@ -194,7 +202,7 @@ export function calculateChapterScoresWithResponses(
         const indicadoresConRespuesta: IndicadorConRespuesta[] = indicadoresHabilitados.map(indicador => {
             const maxPuntos = Math.max(...indicador.niveles_respuesta.map(n => n.puntos), 0)
             const puntosSeleccionados = responses[indicador.indicador.id_indicador]
-            
+
             // Buscar el nivel de respuesta seleccionado
             let respuestaSeleccionada = null
             if (puntosSeleccionados !== undefined) {
@@ -280,12 +288,15 @@ export function calculateChaptersProgress(
  */
 export function determineSustainabilityLevel(porcentaje: number): typeof NIVELES_SOSTENIBILIDAD[0] {
     if (porcentaje >= 75) {
-        return NIVELES_SOSTENIBILIDAD[2] // Alto
+        return NIVELES_SOSTENIBILIDAD[3] // Alto
     }
     if (porcentaje >= 50) {
-        return NIVELES_SOSTENIBILIDAD[1] // Medio
+        return NIVELES_SOSTENIBILIDAD[2] // Medio
     }
-    return NIVELES_SOSTENIBILIDAD[0] // Mínimo
+    if (porcentaje >= 25) {
+        return NIVELES_SOSTENIBILIDAD[1] // Mínimo
+    }
+    return NIVELES_SOSTENIBILIDAD[0] // No alcanza
 }
 
 /**
@@ -334,13 +345,16 @@ export function determineLevelByScoreAndSegment(score: number, segmentName: stri
     const rangos = RANGOS_POR_SEGMENTO[segmentKey]
 
     if (score >= rangos.alto.min) {
-        return NIVELES_SOSTENIBILIDAD[2] // Nivel Alto
+        return NIVELES_SOSTENIBILIDAD[3] // Nivel Alto
     }
 
     if (score >= rangos.medio.min) {
-        return NIVELES_SOSTENIBILIDAD[1] // Nivel Medio
+        return NIVELES_SOSTENIBILIDAD[2] // Nivel Medio
     }
 
-    // Nivel Mínimo (incluye puntajes por debajo del rango mínimo)
-    return NIVELES_SOSTENIBILIDAD[0]
+    if (score >= rangos.minimo.min) {
+        return NIVELES_SOSTENIBILIDAD[1] // Nivel Mínimo
+    }
+
+    return NIVELES_SOSTENIBILIDAD[0] // No alcanza
 }

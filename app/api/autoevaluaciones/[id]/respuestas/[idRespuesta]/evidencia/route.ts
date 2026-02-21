@@ -58,3 +58,59 @@ export async function DELETE(
         )
     }
 }
+
+/**
+ * GET /api/autoevaluaciones/{id}/respuestas/{idRespuesta}/evidencia
+ * Obtener la evidencia de una respuesta individual
+ */
+export async function GET(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string; idRespuesta: string }> }
+) {
+    try {
+        const { id, idRespuesta } = await params
+
+        const cookies = request.headers.get('Cookie')
+        const authHeader = request.headers.get('Authorization')
+
+        const headers: HeadersInit = {
+            'Content-Type': 'application/json',
+        }
+
+        if (cookies) {
+            headers['Cookie'] = cookies
+        }
+
+        if (authHeader) {
+            headers['Authorization'] = authHeader
+        }
+
+        const backendUrl = `${API_BASE_URL}/api/autoevaluaciones/${id}/respuestas/${idRespuesta}/evidencia`
+        console.log(`📋 Proxy evidencia: GET ${backendUrl}`)
+
+        const response = await fetch(backendUrl, {
+            method: 'GET',
+            headers,
+            credentials: 'include',
+        })
+
+        const data = await response.json().catch(() => ({}))
+
+        if (!response.ok) {
+            console.error(`❌ Proxy evidencia: GET Error ${response.status}`, data)
+            return NextResponse.json(
+                { message: data.message || `Error ${response.status}: ${response.statusText}` },
+                { status: response.status }
+            )
+        }
+
+        console.log(`✅ Proxy evidencia: GET exitoso para respuesta ${idRespuesta}`, JSON.stringify(data))
+        return NextResponse.json(data)
+    } catch (error) {
+        console.error('❌ Proxy: Error de conexión al obtener evidencia:', error)
+        return NextResponse.json(
+            { message: 'No se pudo conectar con el servidor backend' },
+            { status: 503 }
+        )
+    }
+}

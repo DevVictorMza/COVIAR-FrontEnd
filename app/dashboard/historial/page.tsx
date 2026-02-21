@@ -29,7 +29,8 @@ export default function HistorialPage() {
     const idBodega = getBodegaId()
     if (idBodega) {
       try {
-        localStorage.setItem(`resultados_${idBodega}`, JSON.stringify(resultados))
+        localStorage.removeItem(`resultados_${idBodega}`) // limpiar cache viejo
+        localStorage.setItem(`resultados_v2_${idBodega}`, JSON.stringify(resultados))
       } catch { /* localStorage lleno */ }
     }
   }
@@ -54,7 +55,7 @@ export default function HistorialPage() {
         }
 
         const CACHE_KEY = `historial_${idBodega}`
-        const RESULTADOS_CACHE_KEY = `resultados_${idBodega}`
+        const RESULTADOS_CACHE_KEY = `resultados_v2_${idBodega}`
 
         // 1. Mostrar cache inmediatamente si existe (carga instantánea)
         const cachedStr = localStorage.getItem(CACHE_KEY)
